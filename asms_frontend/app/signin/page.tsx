@@ -18,10 +18,36 @@ const page = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle sign in logic here
-    console.log('Sign in attempt:', formData);
+    
+    try {
+      const response = await fetch('http://localhost:8080/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(`Welcome back! Logged in successfully as ${result.role}`);
+        // Store user info in localStorage
+        localStorage.setItem('user', JSON.stringify(result));
+        // Redirect to dashboard
+        window.location.href = '/dashboard';
+      } else {
+        const errorResult = await response.json().catch(() => ({ message: 'Unknown error occurred' }));
+        alert(errorResult.message || 'Login failed');
+      }
+    } catch (error) {
+      console.error('Error during sign in:', error);
+      alert('Network error. Please check if the backend is running.');
+    }
   };
 
   const [showpassword, setShowPassword] = useState(false);
@@ -94,7 +120,7 @@ const page = () => {
 
           <button
             type="submit"
-            className="w-full flex justify-center py-2 sm:py-3 px-4 border border-transparent rounded-md shadow-sm text-sm sm:text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-200"
+            className="w-full flex justify-center py-2 sm:py-3 px-4 border border-transparent rounded-md shadow-sm text-sm sm:text-base font-medium text-white bg-blue-500 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-200"
           >
             Sign In
           </button>

@@ -1,18 +1,39 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
-import { FaUser, FaEnvelope, FaPhone, FaLock } from 'react-icons/fa';
+import { useSearchParams } from 'next/navigation';
+import { FaUser, FaEnvelope, FaLock, FaUserTag } from 'react-icons/fa';
 
-const page = () => {
+const SignUpForm = () => {
+  const searchParams = useSearchParams();
+  const roleFromUrl = searchParams.get('role') || 'ROLE_CUSTOMER';
+  
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    name: '',
     email: '',
-    phone: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    role: roleFromUrl
   });
+
+  const getRoleDisplayName = (role: string) => {
+    switch(role) {
+      case 'ROLE_CUSTOMER': return 'Customer';
+      case 'ROLE_MECHANIC': return 'Mechanic';
+      case 'ROLE_ADMIN': return 'Admin';
+      default: return 'Customer';
+    }
+  };
+
+  const getRoleColor = (role: string) => {
+    switch(role) {
+      case 'ROLE_CUSTOMER': return 'text-blue-600';
+      case 'ROLE_MECHANIC': return 'text-green-600';
+      case 'ROLE_ADMIN': return 'text-purple-600';
+      default: return 'text-blue-600';
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -22,7 +43,7 @@ const page = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Basic validation
@@ -31,21 +52,64 @@ const page = () => {
       return;
     }
     
-    // Handle sign up logic here
-    console.log('Sign up attempt:', formData);
+    try {
+      const response = await fetch('http://localhost:8080/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          role: formData.role
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(`Account created successfully as ${getRoleDisplayName(formData.role)}! You can now sign in.`);
+        // Redirect to sign in page
+        window.location.href = '/signin';
+      } else {
+        const errorResult = await response.json().catch(() => ({ message: 'Unknown error occurred' }));
+        alert(errorResult.message || 'Registration failed');
+      }
+    } catch (error) {
+      console.error('Error during sign up:', error);
+      alert('Network error. Please check if the backend is running.');
+    }
   };
 
   return (
     <div className="min-h-screen flex justify-end items-center bg-red-100 px-4 sm:px-6 lg:px-8" style={{backgroundImage: 'url("/Bg1.png")', backgroundSize: 'cover', backgroundPosition: 'center' }}>
-      <div className='p-6 sm:p-8 md:p-10 rounded-lg shadow-lg w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg mr-0 sm:mr-8 md:mr-12 lg:-mr-6' >
+      <div className='p-6 sm:p-8 md:p-10 rounded-lg shadow-lg w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg mr-0 sm:mr-8 md:mr-12 lg:-mr-8' >
         <div className="flex justify-center mb-4 sm:mb-6">
           <img src="/logo.png" alt="logo" className='w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-30 lg:h-30 rounded-full border-2 sm:border-4 border-white'/>
         </div>
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6 text-center text-gray-200">Sign Up</h1>
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 sm:mb-4 text-center text-gray-200">Sign Up</h1>
         
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-          {/* First Name and Last Name */}
-
+          {/* Name */}
+          <div>
+            <label htmlFor="name" className="block text-white text-sm sm:text-base font-medium mb-2">
+              Full Name
+            </label>
+            <div className="relative">
+              <FaUser className="text-black relative text-xl top-8 left-2 z-10" />
+              <input
+                id="name"
+                name="name"
+                type="text"
+                autoComplete="off"
+                required
+                className="w-full px-10 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white placeholder-gray-500"
+                placeholder="Enter your full name"
+                value={formData.name}
+                onChange={handleChange}
+              />
+            </div>
+          </div>
 
           {/* Email */}
           <div>
@@ -53,7 +117,7 @@ const page = () => {
               Email Address
             </label>
             <div className="relative">
-              <FaUser className="text-black relative text-xl top-8 left-2 z-10" />
+              <FaEnvelope className="text-black relative text-xl top-8 left-2 z-10" />
               <input
                 id="email"
                 name="email"
@@ -132,7 +196,7 @@ const page = () => {
             type="submit"
             className="w-full flex justify-center py-2 sm:py-3 px-4 border border-transparent rounded-md shadow-sm text-sm sm:text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-200"
           >
-            Create Account
+            Create {getRoleDisplayName(formData.role)} Account
           </button>
 
           {/* Sign In Link */}
@@ -147,7 +211,17 @@ const page = () => {
         </form>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default page
+const page = () => {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SignUpForm />
+    </Suspense>
+  );
+};
+
+export default page;
+
+

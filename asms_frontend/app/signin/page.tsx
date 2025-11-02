@@ -6,7 +6,7 @@ import Link from 'next/link';
 
 const page = () => {
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     password: ''
   });
 
@@ -28,18 +28,17 @@ const page = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: formData.email,
+          username: formData.username,
           password: formData.password
         }),
       });
 
       if (response.ok) {
         const result = await response.json();
-        alert(`Welcome back! Logged in successfully as ${result.role}`);
         // Store user info in localStorage
         localStorage.setItem('user', JSON.stringify(result));
         // Redirect to dashboard
-        window.location.href = '/dashboard';
+        window.location.href = '/Admin';
       } else {
         const errorResult = await response.json().catch(() => ({ message: 'Unknown error occurred' }));
         alert(errorResult.message || 'Login failed');
@@ -61,20 +60,21 @@ const page = () => {
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6 text-center text-gray-200">Sign In</h1>
         
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+          {/* Username */}
           <div>
-            <label htmlFor="email" className="block text-white text-sm sm:text-base font-medium mb-2">
-              Email Address
+            <label htmlFor="username" className="block text-white text-sm sm:text-base font-medium mb-2">
+              Username
             </label>
             <FaUser className=" relative lg:text-2xl text-lg lg:top-10 top-7 left-2" />
             <input
-              id="email"
-              name="email"
-              type="email"
+              id="username"
+              name="username"
+              type="text"
               autoComplete="off"
               required
               className="w-full px-12 py-2 text-sm sm:py-3 text-black  sm:text-base border border-gray-300  rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-100 placeholder-gray-500"
-              placeholder="Enter your email"
-              value={formData.email}
+              placeholder="Enter your username"
+              value={formData.username}
               onChange={handleChange}
             />
           </div>

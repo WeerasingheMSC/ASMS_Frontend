@@ -10,8 +10,9 @@ const SignUpForm = () => {
   const roleFromUrl = searchParams.get('role') || 'ROLE_CUSTOMER';
   
   const [formData, setFormData] = useState({
-    name: '',
+    fullName: '',
     email: '',
+    phoneNumber: '',
     password: '',
     confirmPassword: '',
     role: roleFromUrl
@@ -53,15 +54,26 @@ const SignUpForm = () => {
     }
     
     try {
+      // Split fullName into firstName and lastName
+      const nameParts = formData.fullName.trim().split(' ');
+      const firstName = nameParts[0];
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+      
+      // Generate username from email (part before @)
+      const username = formData.email.split('@')[0];
+      
       const response = await fetch('http://localhost:8080/api/auth/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: formData.name,
+          username: username,
           email: formData.email,
           password: formData.password,
+          firstName: firstName,
+          lastName: lastName,
+          phoneNumber: formData.phoneNumber,
           role: formData.role
         }),
       });
@@ -90,22 +102,22 @@ const SignUpForm = () => {
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 sm:mb-4 text-center text-gray-200">Sign Up</h1>
         
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-          {/* Name */}
+          {/* Full Name */}
           <div>
-            <label htmlFor="name" className="block text-white text-sm sm:text-base font-medium mb-2">
+            <label htmlFor="fullName" className="block text-white text-sm sm:text-base font-medium mb-2">
               Full Name
             </label>
             <div className="relative">
               <FaUser className="text-black relative text-xl top-8 left-2 z-10" />
               <input
-                id="name"
-                name="name"
+                id="fullName"
+                name="fullName"
                 type="text"
                 autoComplete="off"
                 required
                 className="w-full px-10 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white placeholder-gray-500"
                 placeholder="Enter your full name"
-                value={formData.name}
+                value={formData.fullName}
                 onChange={handleChange}
               />
             </div>
@@ -127,6 +139,28 @@ const SignUpForm = () => {
                 className="w-full px-10 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white placeholder-gray-500"
                 placeholder="Enter your email"
                 value={formData.email}
+                onChange={handleChange}
+              />
+            </div>
+          </div>
+
+          {/* Phone Number */}
+          <div>
+            <label htmlFor="phoneNumber" className="block text-white text-sm sm:text-base font-medium mb-2">
+              Phone Number
+            </label>
+            <div className="relative">
+              <FaUser className="text-black relative text-xl top-8 left-2 z-10" />
+              <input
+                id="phoneNumber"
+                name="phoneNumber"
+                type="tel"
+                autoComplete="off"
+                required
+                pattern="[0-9]{10}"
+                className="w-full px-10 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white placeholder-gray-500"
+                placeholder="Enter 10-digit phone number"
+                value={formData.phoneNumber}
                 onChange={handleChange}
               />
             </div>

@@ -55,8 +55,8 @@ function WorkloadOverview({ projects: initial }: { projects?: Project[] }) {
   const onHoldLen = circumference * (total ? onHold / total : 0);
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-      <div style={{ width: 160, height: 160, position: "relative" }}>
+    <div className={styles.workloadContainer}>
+      <div className={styles.chartWrapper}>
         <svg width={160} height={160} viewBox="0 0 160 160">
           <g transform="rotate(-90 80 80)">
             <circle cx="80" cy="80" r="60" fill="none" stroke="#eef2f7" strokeWidth="14" />
@@ -66,24 +66,24 @@ function WorkloadOverview({ projects: initial }: { projects?: Project[] }) {
           </g>
         </svg>
 
-        <div style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column" }}>
-          <div style={{ fontSize: 20, fontWeight: 700, color: "#000" }}>{inProgress}</div>
-          <div style={{ fontSize: 12, color: "#000000ff" }}>Active</div>
+        <div className={styles.chartCenter}>
+          <div className={styles.chartNumber}>{inProgress}</div>
+          <div className={styles.chartLabel}>Active</div>
         </div>
       </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <span style={{ width: 10, height: 10, borderRadius: 9999, background: "#16a34a", display: "inline-block" }} />
-            <div style={{ color: "#000" }}>Completed <span style={{ color: "#6b7280", marginLeft: 6 }}>({completed})</span></div>
+        <div className={styles.legendContainer}>
+          <div className={styles.legendItem}>
+            <span className={`${styles.legendDot} ${styles.legendDotCompleted}`} />
+            <div className={styles.legendText}>Completed <span className={styles.legendCount}>({completed})</span></div>
           </div>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <span style={{ width: 10, height: 10, borderRadius: 9999, background: "#2563eb", display: "inline-block" }} />
-            <div style={{ color: "#000" }}>In Progress <span style={{ color: "#6b7280", marginLeft: 6 }}>({inProgress})</span></div>
+          <div className={styles.legendItem}>
+            <span className={`${styles.legendDot} ${styles.legendDotInProgress}`} />
+            <div className={styles.legendText}>In Progress <span className={styles.legendCount}>({inProgress})</span></div>
           </div>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <span style={{ width: 10, height: 10, borderRadius: 9999, background: "#f59e0b", display: "inline-block" }} />
-            <div style={{ color: "#000" }}>On Hold <span style={{ color: "#6b7280", marginLeft: 6 }}>({onHold})</span></div>
+          <div className={styles.legendItem}>
+            <span className={`${styles.legendDot} ${styles.legendDotOnHold}`} />
+            <div className={styles.legendText}>On Hold <span className={styles.legendCount}>({onHold})</span></div>
           </div>
         </div>
     </div>
@@ -109,11 +109,6 @@ export default function EmployeeDashboardPage() {
   const totalProjects = projectsData.length || 0;
   // percent of projects that are In Progress (out of all projects)
   const percentInProgress = totalProjects ? Math.round((inProgressCount / totalProjects) * 100) : 0;
-
-  // keep a small average progress value if still useful elsewhere (not used by bar anymore)
-  const avgProgress = inProgressCount
-    ? Math.round(inProgressProjects.reduce((s, p) => s + (p.progress || 0), 0) / inProgressCount)
-    : 0;
 
   useEffect(() => {
     // listen for updates from other components that write to localStorage
@@ -172,7 +167,7 @@ export default function EmployeeDashboardPage() {
   const todayDisplay = today.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 
   const scheduledToday = projectsData.filter((p) => {
-    const iso = normalizeToISO(p.due as unknown as string);
+    const iso = normalizeToISO(p.due);
     return iso === todayISO && p.status !== "Completed";
   });
 
@@ -183,25 +178,27 @@ export default function EmployeeDashboardPage() {
           <p className="text-gray-500 mt-1">Manage your tasks and appointments.</p>
         </header>
   <section className="grid grid-cols-2 gap-6">
-    <div className="col-span-1 bg-white p-6 rounded-lg shadow-sm" style={{ maxWidth: 600 }}>
+    <div className={`col-span-1 bg-white p-6 rounded-lg shadow-sm ${styles.projectsCard}`}>
           <div className="flex items-start justify-between mb-4">
             <h2 className="text-xl font-semibold">My Projects</h2>
             <a href="/employee/projects" className="text-sm text-blue-600">View All</a>
           </div>
 
           {/* Summary for In Progress projects (aggregate percentage) */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#5e2a2aff" }}>In Progress</div>
-              <div style={{ color: "#292b2eff" }}>{inProgressCount} project{inProgressCount !== 1 ? "s" : ""}</div>
+          <div className={styles.summaryRow}>
+            <div className={styles.summaryLeft}>
+                <div className={styles.summaryTitle}>In Progress</div>
+              <div className={styles.summaryCount}>{inProgressCount} project{inProgressCount !== 1 ? "s" : ""}</div>
             </div>
 
-            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-              <div style={{ width: 160 }}>
-                <div style={{ height: 8, background: "#eef2f6", borderRadius: 9999, overflow: "hidden" }}>
-                  <div style={{ width: `${percentInProgress}%`, height: "100%", background: "#16a34a" }} />
+            <div className={styles.summaryRight}>
+              <div className={styles.progressBarWrapper}>
+                {/* Dynamic width requires inline style - progress percentage is calculated at runtime */}
+                <div className={styles.progressBarTrack}>
+                  {/* @ts-expect-error CSS custom property for dynamic value */}
+                  <div className={styles.progressBarFill} style={{ '--progress-percentage': percentInProgress }} />
                 </div>
-                <div style={{ fontSize: 12, color: "#000", fontWeight: 700, marginTop: 6 }}>{percentInProgress}% In Progress</div>
+                <div className={styles.progressBarLabel}>{percentInProgress}% In Progress</div>
               </div>
             </div>
           </div>
@@ -209,13 +206,13 @@ export default function EmployeeDashboardPage() {
           <ul className={`${styles.myProjects} space-y-4`}>
             {inProgressProjects.length === 0 ? (
               <li className={styles.projectItem}>
-                <div style={{ color: '#6b7280' }}>No projects in progress</div>
+                <div className={styles.noProjects}>No projects in progress</div>
               </li>
             ) : (
               inProgressProjects.map((p) => (
                 <li key={p.name} className={styles.projectItem}>
                   <div className={styles.projectLeft}>
-                    <div className={styles.iconBox} style={{ background: p.status === 'In Progress' ? '#fff7ed' : '#fff', color: '#047857' }}>
+                    <div className={`${styles.iconBox} ${styles.iconBoxInProgress}`}>
                       {/* simple status glyph */}
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 12h18" stroke="#047857" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     </div>
@@ -226,7 +223,7 @@ export default function EmployeeDashboardPage() {
                   </div>
                   <div className={styles.projectRight}>
                     {/* due date kept optional; if you previously removed due dates, we can hide this */}
-                    <div style={{ fontSize: 12, color: '#6b7280' }}>{p.due}</div>
+                    <div className={styles.dueDate}>{p.due}</div>
                   </div>
                 </li>
               ))
@@ -238,7 +235,7 @@ export default function EmployeeDashboardPage() {
           <div className="flex items-start justify-between mb-3">
             <div>
               <h3 className={`${styles.cardHeading} text-base`}>Today's Schedule</h3>
-              <div style={{ color: '#6b7280', fontSize: 12 }}>{todayDisplay}</div>
+              <div className={styles.scheduleDate}>{todayDisplay}</div>
             </div>
             <a href="/employee/projects" className="text-sm text-blue-600">View All</a>
           </div>
@@ -247,7 +244,7 @@ export default function EmployeeDashboardPage() {
             {scheduledToday.length === 0 ? (
               <li className={styles.scheduleItem}>
                 <div className={styles.scheduleLeft}>
-                  <div style={{ color: '#6b7280' }}>No projects scheduled for today</div>
+                  <div className={styles.noProjects}>No projects scheduled for today</div>
                 </div>
               </li>
             ) : (
@@ -268,7 +265,7 @@ export default function EmployeeDashboardPage() {
         </div>
       </section>
 
-      <section className="bg-white p-4 rounded-lg shadow-sm" style={{ maxHeight: 250,maxWidth:450, overflow: "hidden" }}>
+      <section className={`bg-white p-4 rounded-lg shadow-sm ${styles.workloadSection}`}>
         <h3 className="font-semibold mb-3">Workload Overview</h3>
         <div>
           {/* client component reads projects from localStorage or falls back to sample */}

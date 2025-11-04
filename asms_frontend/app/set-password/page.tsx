@@ -5,6 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { FaLock, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
 const SetPasswordForm = () => {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
@@ -31,7 +33,7 @@ const SetPasswordForm = () => {
 
   const verifyToken = async () => {
     try {
-      const response = await fetch(`http://localhost:8080/api/auth/verify-token?token=${token}`);
+      const response = await fetch(`${API_URL}/api/auth/verify-token?token=${token}`);
       const result = await response.json();
 
       if (response.ok && result.success) {
@@ -73,7 +75,7 @@ const SetPasswordForm = () => {
     setVerifying(true);
 
     try {
-      const response = await fetch('http://localhost:8080/api/auth/set-password', {
+      const response = await fetch(`${API_URL}/api/auth/set-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

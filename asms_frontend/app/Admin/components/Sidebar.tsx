@@ -7,6 +7,7 @@ import { FaRegUser } from "react-icons/fa";
 import { AiOutlineFileText } from "react-icons/ai";
 import { LiaToolsSolid } from "react-icons/lia";
 import { MdOutlineHomeRepairService } from "react-icons/md";
+import { HiOutlineUserGroup } from "react-icons/hi";
 
 interface SidebarProps {
   activeItem?: string;
@@ -22,7 +23,7 @@ const Sidebar = ({ activeItem = '' }: SidebarProps) => {
         <h1 className='text-amber-50 font-bold text-2xl mt-5'>VX Service</h1>
       </div>
       <div>
-        <ul className='mt-10 text-white font-semibold text-lg space-y-8 ml-10'>
+        <ul className='mt-10 text-white font-semibold text-lg space-y-4 ml-10'>
           <li 
             onClick={() => router.push('/Admin')}
             className={`cursor-pointer flex text-lg p-2 rounded ${activeItem === 'Dashboard' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
@@ -37,7 +38,7 @@ const Sidebar = ({ activeItem = '' }: SidebarProps) => {
           </li>
           <li 
             onClick={() => router.push('/Admin/Services')}
-            className={`cursor-pointer flex text-lg p-2 rounded ${activeItem === 'Services' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
+            className={`cursor-pointer flex text-lg p-2 rounded-l-2xl ${activeItem === 'Services' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
           >
             <MdOutlineHomeRepairService className='mr-2 text-2xl' />Services
           </li>
@@ -48,16 +49,10 @@ const Sidebar = ({ activeItem = '' }: SidebarProps) => {
             <FaRegUser className='mr-2 text-2xl' />Employees
           </li>
           <li 
-            onClick={() => router.push('/Admin/Mechanics')}
-            className={`cursor-pointer flex text-lg p-2 rounded ${activeItem === 'Mechanics' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
+            onClick={() => router.push('/Admin/Customers')}
+            className={`cursor-pointer flex text-lg p-2 rounded-l-2xl ${activeItem === 'Customers' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
           >
-            <LiaToolsSolid className='mr-2 text-2xl' />Mechanics
-          </li>
-          <li 
-            onClick={() => router.push('/Admin/Reports')}
-            className={`cursor-pointer flex text-lg p-2 rounded ${activeItem === 'Reports' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
-          >
-            <GrDocumentPerformance className='mr-2 text-2xl' />Reports
+            <HiOutlineUserGroup className='mr-2 text-2xl' />Customers
           </li>
           <li 
             onClick={() => router.push('/Admin/Settings')}

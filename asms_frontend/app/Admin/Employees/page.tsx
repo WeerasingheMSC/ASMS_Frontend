@@ -12,6 +12,8 @@ import EmailIcon from '@mui/icons-material/Email';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
 const EmployeesPage = () => {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [isEditPopupOpen, setIsEditPopupOpen] = useState(false);
@@ -52,7 +54,7 @@ const EmployeesPage = () => {
       }
 
       const user = JSON.parse(userData);
-      const response = await fetch('http://localhost:8080/api/admin/employees', {
+      const response = await fetch(`${API_URL}/api/admin/employees`, {
         headers: {
           'Authorization': `Bearer ${user.token}`
         }
@@ -139,7 +141,7 @@ const EmployeesPage = () => {
       }
 
       const user = JSON.parse(userData);
-      const response = await fetch(`http://localhost:8080/api/admin/employees/${editFormData.id}`, {
+      const response = await fetch(`${API_URL}/api/admin/employees/${editFormData.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -202,7 +204,7 @@ const EmployeesPage = () => {
       }
 
       const user = JSON.parse(userData);
-      const response = await fetch(`http://localhost:8080/api/admin/employees/${employeeToDelete.id}`, {
+      const response = await fetch(`${API_URL}/api/admin/employees/${employeeToDelete.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${user.token}`
@@ -256,7 +258,7 @@ const EmployeesPage = () => {
       }
 
       const user = JSON.parse(userData);
-      const response = await fetch(`http://localhost:8080/api/admin/employees/${employeeId}/resend-activation`, {
+      const response = await fetch(`${API_URL}/api/admin/employees/${employeeId}/resend-activation`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${user.token}`
@@ -311,7 +313,7 @@ const EmployeesPage = () => {
       }
 
       const user = JSON.parse(userData);
-      const response = await fetch('http://localhost:8080/api/admin/employees', {
+      const response = await fetch(`${API_URL}/api/admin/employees`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -373,7 +375,7 @@ const EmployeesPage = () => {
           <h1 className='text-3xl font-bold text-gray-800'>Employee Management</h1>
           <button
             onClick={() => setIsPopupOpen(true)}
-            className='bg-green-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors shadow-md'
+            className='bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-md'
           >
             + Add New Employee
           </button>
@@ -427,7 +429,7 @@ const EmployeesPage = () => {
             <Tooltip title={selectedRows.length > 0 ? `Export ${selectedRows.length} selected rows to CSV` : 'Export all filtered data to CSV'}>
               <button
                 onClick={handleExportCSV}
-                className='bg-indigo-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-indigo-700 transition-colors shadow-md flex items-center gap-2 whitespace-nowrap'
+                className='bg-green-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-600 transition-colors shadow-md flex items-center gap-2 whitespace-nowrap'
               >
                 <FileDownloadIcon />
                 Export to CSV
@@ -462,13 +464,13 @@ const EmployeesPage = () => {
                     }}
                   />
                 </th>
-                <th className='px-6 py-4 text-left'>ID</th>
-                <th className='px-6 py-4 text-left'>Name</th>
-                <th className='px-6 py-4 text-left'>Email</th>
-                <th className='px-6 py-4 text-left'>Phone</th>
-                <th className='px-6 py-4 text-left'>Position</th>
-                <th className='px-6 py-4 text-left'>Department</th>
-                <th className='px-6 py-4 text-center'>Actions</th>
+                <th className='px-6 py-4 text-left'><p className='text-white'>ID</p></th>
+                <th className='px-6 py-4 text-left'><p className='text-white'>Name</p></th>
+                <th className='px-6 py-4 text-left'><p className='text-white'>Email</p></th>
+                <th className='px-6 py-4 text-left'><p className='text-white'>Phone</p></th>
+                <th className='px-6 py-4 text-left'><p className='text-white'>Position</p></th>
+                <th className='px-6 py-4 text-left'><p className='text-white'>Department</p></th>
+                <th className='px-6 py-4 text-center'><p className='text-white'>Actions</p></th>
               </tr>
             </thead>
             <tbody>

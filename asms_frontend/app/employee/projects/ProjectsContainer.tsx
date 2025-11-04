@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import projStyles from "./projects.module.css";
 import ProjectsTable from "./ProjectsTable";
+import projectsApi from "../../lib/projectsApi";
 
 type Project = {
   name: string;
@@ -17,21 +18,16 @@ export default function ProjectsContainer({ projects }: { projects: Project[] })
   const [statusFilter, setStatusFilter] = useState<string>("All");
 
   useEffect(() => {
-    // On mount or when projects prop changes, prefer persisted projects from localStorage if available
-    try {
-      const raw = localStorage.getItem("asms_projects");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          setFiltered(parsed as Project[]);
-          return;
-        }
-      }
-    } catch (e) {
-      // ignore and fall back to prop
-    }
-    // fallback to provided projects prop
-    setFiltered(projects);
+    let mounted = true;
+    // attempt to fetch from backend, fall back to localStorage, then to props
+    projectsApi.fetchProjects().then((fetched) => {
+      if (!mounted) return;
+      if (fetched && fetched.length > 0) setFiltered(fetched as Project[]);
+      else setFiltered(projects);
+    }).catch(() => {
+      setFiltered(projects);
+    });
+    return () => { mounted = false; };
   }, [projects]);
 
   function handleSearchEnter() {

@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import styles from "../employee/employee.module.css";
+import projectsApi from "../lib/projectsApi";
 
 type Project = {
   name: string;
@@ -93,15 +94,14 @@ export default function EmployeeDashboardPage() {
   const [projectsData, setProjectsData] = useState<Project[]>(defaultSample);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("asms_projects");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) setProjectsData(parsed);
-      }
-    } catch (e) {
-      // ignore
-    }
+    let mounted = true;
+    projectsApi.fetchProjects().then((data) => {
+      if (!mounted) return;
+      if (data && data.length > 0) setProjectsData(data as Project[]);
+    }).catch(() => {
+      // ignore - keep defaults or localStorage fallback handled in helper
+    });
+    return () => { mounted = false; };
   }, []);
 
   const inProgressProjects = projectsData.filter((p) => p.status === "In Progress");

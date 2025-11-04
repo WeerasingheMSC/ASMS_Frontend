@@ -1,0 +1,120 @@
+.headerIcons { align-items: center; }
+.notifyBtn { background: transparent; border: none; }
+.notifyBadge { position: absolute; top: 6px; right: 6px; width: 9px; height: 9px; background: #ef4444; border-radius: 9999px; box-shadow: 0 0 0 2px rgba(255,255,255,0.8); }
+.avatarWrap { width: 40px; height: 40px; border-radius: 9999px; overflow: hidden; border: 2px solid rgba(0,0,0,0.04); display:flex; align-items:center; justify-content:center; }
+.iconLabel { font-size: 0.8rem; color: #1e1f21; display: inline-block; vertical-align: middle; margin-left:8px; }
+
+/* Dashboard/project styles scoped to employee layout */
+.myProjects { padding: 0; }
+.projectItem { display: flex; justify-content: space-between; align-items: center; }
+.projectLeft { display:flex; gap:12px; align-items:center; }
+.iconBox { width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:700; }
+.projectMeta { display:inline-block; }
+.projectTitle { font-weight: 600; color: black; }
+.projectClient { font-size: 0.85rem; color: #131415; }
+.progressTrack { width: 220px; height: 8px; background: #eef6ff; border-radius: 9999px; overflow: hidden; }
+.progressFill { height: 100%; background: var(--primary); border-radius: 9999px; }
+.projectRight { text-align: right; min-width:120px; }
+.projectRight .percent { font-weight:600; color: var(--primary); }
+.projectRight .due { font-size:0.8rem; color: #121213; }
+.workloadChart { height: 240px; display:flex; align-items:center; justify-content:center; color:#1c1e20; }
+.scheduleList li { display:flex; gap:12px; align-items:flex-start; }
+.dot { width:10px; height:10px; border-radius:50%; margin-top:6px; }
+.dotBlue { background: var(--primary); }
+.dotGreen { background: var(--accent-green); }
+.dotYellow { background: var(--accent-orange); }
+
+/* Schedule card styles */
+.scheduleList { padding: 0; margin: 0; list-style: none; }
+.scheduleItem { display:block; }
+.scheduleLeft { display:flex; gap:12px; align-items:flex-start; }
+.eventTime { font-weight: 700; color: rgb(20, 19, 19); font-size: 0.9rem; }
+.eventTitle { font-weight: 700; color: rgb(70, 68, 68); margin-top: 4px; }
+.eventClient { color: #3a3e47; font-size: 0.85rem; margin-top: 2px; }
+
+/* Small vertical line to the left of the events (visual only) */
+.scheduleLeft::before { content: ""; width: 2px; background: rgba(99,102,241,0.05); display:block; margin-left: 8px; margin-right: -8px; }
+
+/* Icon box color variants (match screenshot colored glyph backgrounds) */
+.iconBoxBlue { background: #eef6ff; color: var(--primary); }
+.iconBoxGreen { background: #ecfdf5; color: var(--accent-green); }
+.iconBoxPink { background: #fff1f2; color: var(--accent-red); }
+
+/* Tighter heading color for card titles to match screenshot */
+.cardHeading { color: rgb(21, 30, 48); font-weight: 700; }
+
+/* Sidebar styles scoped to the employee area (nav on deep navy background) */
+.sidebar {
+	background: #07183a; /* deep navy */
+	color: #fff;
+	position: fixed; /* keep sidebar visible while page scrolls */
+	left: 0;
+	top: 0;
+	bottom: 0;
+	width: 14rem; /* matches w-56 */
+	display: flex;
+	flex-direction: column;
+	z-index: 40;
+}
+
+/* Brand area */
+.brand {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 10px;
+	padding-bottom: 12px;
+	border-bottom: 2px solid rgba(255,255,255,0.06);
+}
+.avatarCircle { width: 84px; height: 84px; border-radius: 9999px; overflow: hidden; display:flex; align-items:center; justify-content:center; box-shadow: 0 2px 6px rgba(0,0,0,0.25); }
+.brandName { color: #ffffff; font-weight: 700; margin-top: 4px; }
+
+/* Navigation */
+.navLink {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 10px 12px;
+	color: rgba(255,255,255,0.92);
+	border-radius: 10px;
+	text-decoration: none;
+	font-weight: 500;
+}
+.navLink:hover { background: rgba(255,255,255,0.04); color: #fff; }
+.navIcon { width: 36px; height: 36px; display:flex; align-items:center; justify-content:center; border-radius: 9999px; color: rgba(255,255,255,0.9); }
+.navLabel { font-size: 0.98rem; }
+
+/* Active item: white pill with dark text to match screenshot */
+.active { background: #ffffff; color: #07183a !important; font-weight: 700; }
+.active .navIcon { color: #07183a !important; }
+
+/* Ensure header icons appear above other content */
+.headerIcons { z-index: 50; }
+
+/* Ensure headings, table text and project lines are clearly visible on employee pages */
+:global(h1), :global(h2), :global(h3), :global(h4), :global(h5) {
+  color: black !important;
+}
+
+:global(.bg-white h2), :global(.bg-white h3), .cardHeading {
+  color: black !important;
+}
+
+:global(table th), :global(table td) {
+  color: black !important;
+}
+
+/* Make project client lines more visible */
+.projectClient { color: black; }
+
+/* Also cover the plain class names used in the dashboard markup */
+:global(.project-meta .title), :global(.title) {
+	color: black !important;
+	font-weight: 600 !important;
+}
+:global(.project-meta .client), :global(.client) {
+	color: rgb(49, 47, 47) !important;
+	font-size: 0.85rem !important;
+}
+:global(.percent) { color: rgb(57, 55, 55) !important; font-weight:600 !important; }
+:global(.due) { color: rgb(67, 64, 64) !important; font-size:0.8rem !important; }

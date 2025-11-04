@@ -118,3 +118,41 @@
 }
 :global(.percent) { color: rgb(57, 55, 55) !important; font-weight:600 !important; }
 :global(.due) { color: rgb(67, 64, 64) !important; font-size:0.8rem !important; }
+
+/* Workload Overview Styles */
+.workloadContainer { display: flex; align-items: center; gap: 20px; }
+.chartWrapper { width: 160px; height: 160px; position: relative; }
+.chartCenter { position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+.chartNumber { font-size: 20px; font-weight: 700; color: #000; }
+.chartLabel { font-size: 12px; color: #000000ff; }
+.legendContainer { display: flex; flex-direction: column; gap: 8px; }
+.legendItem { display: flex; gap: 12px; align-items: center; }
+.legendDot { width: 10px; height: 10px; border-radius: 9999px; display: inline-block; }
+.legendDotCompleted { background: #16a34a; }
+.legendDotInProgress { background: #2563eb; }
+.legendDotOnHold { background: #f59e0b; }
+.legendText { color: #000; }
+.legendCount { color: #6b7280; margin-left: 6px; }
+
+/* Project Cards Styles */
+.projectsCard { max-width: 600px; }
+.summaryRow { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.summaryLeft { display: flex; gap: 8px; align-items: center; }
+.summaryTitle { font-size: 14px; font-weight: 700; color: #5e2a2aff; }
+.summaryCount { color: #292b2eff; }
+.summaryRight { display: flex; gap: 12px; align-items: center; }
+.progressBarWrapper { width: 160px; }
+.progressBarTrack { height: 8px; background: #eef2f6; border-radius: 9999px; overflow: hidden; }
+.progressBarFill { 
+  width: calc(var(--progress-percentage, 0) * 1%);
+  height: 100%; 
+  background: #16a34a; 
+}
+.progressBarLabel { font-size: 12px; color: #000; font-weight: 700; margin-top: 6px; }
+.noProjects { color: #6b7280; }
+.iconBoxInProgress { background: #fff7ed; color: #047857; }
+.dueDate { font-size: 12px; color: #6b7280; }
+
+/* Schedule Styles */
+.scheduleDate { color: #6b7280; font-size: 12px; }
+.workloadSection { max-height: 250px; max-width: 450px; overflow: hidden; }

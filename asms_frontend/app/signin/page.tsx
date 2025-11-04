@@ -4,6 +4,8 @@ import { IoEye,IoEyeOff } from "react-icons/io5";
 import React, { useState } from 'react';
 import Link from 'next/link';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
 const page = () => {
   const [formData, setFormData] = useState({
     username: '',
@@ -22,7 +24,7 @@ const page = () => {
     e.preventDefault();
     
     try {
-      const response = await fetch('http://localhost:8080/api/auth/login', {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -66,17 +68,15 @@ const page = () => {
               Username
             </label>
             <FaUser className=" relative lg:text-2xl text-lg lg:top-10 top-7 left-2" />
-            <input
-              id="username"
-              name="username"
-              type="text"
-              autoComplete="off"
-              required
-              className="w-full px-12 py-2 text-sm sm:py-3 text-black  sm:text-base border border-gray-300  rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-100 placeholder-gray-500"
-              placeholder="Enter your username"
-              value={formData.username}
-              onChange={handleChange}
-            />
+                      <input
+            type="text"
+            name="username"
+            placeholder="Enter your Username or Email"
+            value={formData.username}
+            onChange={handleChange}
+            className="w-full px-12 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white placeholder-gray-500"
+            required
+          />
           </div>
 
           <div>

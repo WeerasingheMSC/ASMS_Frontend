@@ -110,6 +110,12 @@ export default function EmployeeDashboardPage() {
   // percent of projects that are In Progress (out of all projects)
   const percentInProgress = totalProjects ? Math.round((inProgressCount / totalProjects) * 100) : 0;
 
+  // dashboard status counts
+  const statusCounts = countByStatus(projectsData);
+  const dashboardCompleted = statusCounts.Completed || 0;
+  const dashboardInProgress = statusCounts["In Progress"] || 0;
+  const dashboardOnHold = statusCounts["On Hold"] || 0;
+
   useEffect(() => {
     // listen for updates from other components that write to localStorage
     function handleUpdate() {
@@ -263,15 +269,65 @@ export default function EmployeeDashboardPage() {
             )}
           </ul>
         </div>
+      
       </section>
 
-      <section className={`bg-white p-4 rounded-lg shadow-sm ${styles.workloadSection}`}>
-        <h3 className="font-semibold mb-3">Workload Overview</h3>
-        <div>
-          {/* client component reads projects from localStorage or falls back to sample */}
-          <WorkloadOverview />
+      {/* Dashboard summary cards (matches style of customer page) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className='bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow'>
+          <div className='flex items-center justify-between mb-4'>
+            <h3 className='text-lg font-semibold text-gray-800'>In Progress</h3>
+            <div className='bg-blue-100 p-3 rounded-full'>
+              <svg className='w-6 h-6 text-blue-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' />
+              </svg>
+            </div>
+          </div>
+          <p className='text-gray-600 mb-2'>Active projects</p>
+          <div>
+            <span className='text-2xl font-bold text-blue-600'>{dashboardInProgress}</span>
+            <span className='text-gray-500 ml-2'>projects</span>
+          </div>
         </div>
-      </section>
+
+        <div className='bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow'>
+          <div className='flex items-center justify-between mb-4'>
+            <h3 className='text-lg font-semibold text-gray-800'>Completed</h3>
+            <div className='bg-green-100 p-3 rounded-full'>
+              <svg className='w-6 h-6 text-green-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M20 6L9 17l-5-5' />
+              </svg>
+            </div>
+          </div>
+          <p className='text-gray-600 mb-2'>Finished projects</p>
+          <div>
+            <span className='text-2xl font-bold text-green-600'>{dashboardCompleted}</span>
+            <span className='text-gray-500 ml-2'>projects</span>
+          </div>
+        </div>
+
+        <div className='bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow'>
+          <div className='flex items-center justify-between mb-4'>
+            <h3 className='text-lg font-semibold text-gray-800'>On Hold</h3>
+            <div className='bg-yellow-100 p-3 rounded-full'>
+              <svg className='w-6 h-6 text-yellow-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' />
+              </svg>
+            </div>
+          </div>
+          <p className='text-gray-600 mb-2'>Paused projects</p>
+          <div>
+            <span className='text-2xl font-bold text-yellow-600'>{dashboardOnHold}</span>
+            <span className='text-gray-500 ml-2'>projects</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Workload overview moved up into the main flow to reduce vertical spacing */}
+      <div className={`bg-white p-4 rounded-lg shadow-sm ${styles.workloadSection}`}>
+        <h3 className="font-semibold mb-3">Workload Overview</h3>
+        <WorkloadOverview />
+      </div>
     </div>
   );
 }

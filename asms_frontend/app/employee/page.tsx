@@ -1,260 +1,282 @@
 "use client";
+import React, { useEffect, useState } from "react";
+import styles from "../employee/employee.module.css";
+import projectsApi from "../lib/projectsApi";
 
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/toast";
-import { 
-  User, 
-  Phone, 
-  Wrench, 
-  Calendar, 
-  Clock, 
-  CheckCircle2, 
-  XCircle, 
-  AlertCircle,
-  Plus
-} from "lucide-react";
-
-interface Job {
-  id: number;
-  customerName: string;
-  phone: string;
-  serviceType: string;
-  additionalServices: string;
-  expectedCompletionDate: string;
+type Project = {
+  name: string;
+  client: string;
   status: string;
+  progress: number;
+  due: string;
+};
+
+const defaultSample: Project[] = [
+  { name: "Client Website Redesign", client: "Innovate Inc.", status: "In Progress", progress: 75, due: "2024-12-15" },
+  { name: "Mobile App Development", client: "Synergy Corp.", status: "Completed", progress: 100, due: "2024-10-30" },
+  { name: "API Integration", client: "Tech Solutions", status: "On Hold", progress: 10, due: "2025-01-20" },
+  { name: "Service Automation", client: "Acme Ltd.", status: "In Progress", progress: 45, due: "2025-02-05" },
+];
+
+function countByStatus(projects: Project[]) {
+  const counts: Record<string, number> = { Completed: 0, "In Progress": 0, "On Hold": 0 };
+  for (const p of projects) {
+    if (p.status === "Completed") counts.Completed++;
+    else if (p.status === "In Progress") counts["In Progress"]++;
+    else counts["On Hold"]++;
+  }
+  return counts;
 }
 
-export default function EmployeeDashboard() {
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<string>("All");
-  const { showToast, ToastComponent } = useToast();
-
-  const fetchJobs = () => {
-    setLoading(true);
-    fetch("/api/jobs/employee/1") // replace with actual employee ID
-      .then((res) => res.json())
-      .then((data) => {
-        setJobs(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Error fetching jobs:", err);
-        setLoading(false);
-      });
-  };
+function WorkloadOverview({ projects: initial }: { projects?: Project[] }) {
+  const [projects, setProjects] = useState<Project[]>(initial || defaultSample);
 
   useEffect(() => {
-    fetchJobs();
+    try {
+      const raw = localStorage.getItem("asms_projects");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setProjects(parsed);
+      }
+    } catch (e) {
+      // ignore
+    }
   }, []);
 
-  const updateJob = async (id: number, updated: Partial<Job>) => {
-    try {
-      const response = await fetch(`/api/jobs/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updated),
-      });
-      
-      if (!response.ok) {
-        throw new Error("Failed to update job");
-      }
-      
-      showToast("Job updated successfully! ✅", "success");
-      fetchJobs(); // Refresh the jobs list
-    } catch (error) {
-      console.error("Error updating job:", error);
-      showToast("Failed to update job. Please try again.", "error");
-    }
-  };
+  const counts = countByStatus(projects);
+  const total = projects.length || 0;
+  const completed = counts.Completed || 0;
+  const inProgress = counts["In Progress"] || 0;
+  const onHold = counts["On Hold"] || 0;
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Completed":
-        return "bg-green-100 text-green-800 border-green-300";
-      case "In Progress":
-        return "bg-blue-100 text-blue-800 border-blue-300";
-      case "Failed":
-        return "bg-red-100 text-red-800 border-red-300";
-      default:
-        return "bg-yellow-100 text-yellow-800 border-yellow-300";
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "Completed":
-        return <CheckCircle2 className="w-5 h-5 text-green-600" />;
-      case "In Progress":
-        return <Clock className="w-5 h-5 text-blue-600" />;
-      case "Failed":
-        return <XCircle className="w-5 h-5 text-red-600" />;
-      default:
-        return <AlertCircle className="w-5 h-5 text-yellow-600" />;
-    }
-  };
-
-  const filteredJobs = filter === "All" 
-    ? jobs 
-    : jobs.filter(job => job.status === filter);
-
-  const statusCounts = {
-    All: jobs.length,
-    Pending: jobs.filter(j => j.status === "Pending").length,
-    "In Progress": jobs.filter(j => j.status === "In Progress").length,
-    Completed: jobs.filter(j => j.status === "Completed").length,
-    Failed: jobs.filter(j => j.status === "Failed").length,
-  };
+  const circumference = 2 * Math.PI * 60;
+  const completedLen = circumference * (total ? completed / total : 0);
+  const inProgressLen = circumference * (total ? inProgress / total : 0);
+  const onHoldLen = circumference * (total ? onHold / total : 0);
 
   return (
-    <>
-      {ToastComponent}
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-        {/* Header Section */}
-        <div className="bg-white dark:bg-slate-800 shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-                <Wrench className="w-8 h-8 text-blue-600" />
-                Employee Dashboard
-              </h1>
-              <p className="text-slate-600 dark:text-slate-400 mt-1">
-                Manage and track your assigned jobs
-              </p>
-            </div>
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg">
-              <Plus className="w-4 h-4 mr-2" />
-              New Job
-            </Button>
-          </div>
+    <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+      <div style={{ width: 160, height: 160, position: "relative" }}>
+        <svg width={160} height={160} viewBox="0 0 160 160">
+          <g transform="rotate(-90 80 80)">
+            <circle cx="80" cy="80" r="60" fill="none" stroke="#eef2f7" strokeWidth="14" />
+            <circle cx="80" cy="80" r="60" fill="none" stroke="#16a34a" strokeWidth="14" strokeDasharray={`${completedLen} ${circumference - completedLen}`} strokeLinecap="round" />
+            <circle cx="80" cy="80" r="60" fill="none" stroke="#2563eb" strokeWidth="14" strokeDasharray={`${inProgressLen} ${circumference - inProgressLen}`} strokeDashoffset={-completedLen} strokeLinecap="round" />
+            <circle cx="80" cy="80" r="60" fill="none" stroke="#f59e0b" strokeWidth="14" strokeDasharray={`${onHoldLen} ${circumference - onHoldLen}`} strokeDashoffset={-(completedLen + inProgressLen)} strokeLinecap="round" />
+          </g>
+        </svg>
+
+        <div style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column" }}>
+          <div style={{ fontSize: 20, fontWeight: 700, color: "#000" }}>{inProgress}</div>
+          <div style={{ fontSize: 12, color: "#000000ff" }}>Active</div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-          {Object.entries(statusCounts).map(([status, count]) => (
-            <button
-              key={status}
-              onClick={() => setFilter(status)}
-              className={`p-4 rounded-xl border-2 transition-all duration-200 hover:scale-105 ${
-                filter === status
-                  ? "bg-blue-600 text-white border-blue-600 shadow-lg"
-                  : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-blue-400"
-              }`}
-            >
-              <div className="text-2xl font-bold">{count}</div>
-              <div className="text-sm opacity-90">{status}</div>
-            </button>
-          ))}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <span style={{ width: 10, height: 10, borderRadius: 9999, background: "#16a34a", display: "inline-block" }} />
+            <div style={{ color: "#000" }}>Completed <span style={{ color: "#6b7280", marginLeft: 6 }}>({completed})</span></div>
+          </div>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <span style={{ width: 10, height: 10, borderRadius: 9999, background: "#2563eb", display: "inline-block" }} />
+            <div style={{ color: "#000" }}>In Progress <span style={{ color: "#6b7280", marginLeft: 6 }}>({inProgress})</span></div>
+          </div>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <span style={{ width: 10, height: 10, borderRadius: 9999, background: "#f59e0b", display: "inline-block" }} />
+            <div style={{ color: "#000" }}>On Hold <span style={{ color: "#6b7280", marginLeft: 6 }}>({onHold})</span></div>
+          </div>
         </div>
-
-        {/* Loading State */}
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </div>
-        ) : filteredJobs.length === 0 ? (
-          <div className="text-center py-20">
-            <AlertCircle className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-slate-700 dark:text-slate-300">
-              No jobs found
-            </h3>
-            <p className="text-slate-500 dark:text-slate-400 mt-2">
-              {filter === "All" ? "No jobs available" : `No ${filter} jobs`}
-            </p>
-          </div>
-        ) : (
-          /* Jobs Grid */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredJobs.map((job) => (
-              <Card 
-                key={job.id} 
-                className="hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-2 overflow-hidden group"
-              >
-                <CardHeader className={`${getStatusColor(job.status)} border-b-2 transition-colors`}>
-                  <CardTitle className="flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      {getStatusIcon(job.status)}
-                      <span className="text-lg">{job.serviceType}</span>
-                    </span>
-                    <span className="text-sm font-normal px-3 py-1 bg-white/50 rounded-full">
-                      #{job.id}
-                    </span>
-                  </CardTitle>
-                </CardHeader>
-
-                <CardContent className="pt-6 space-y-4">
-                  {/* Customer Info */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3 text-slate-700 dark:text-slate-300">
-                      <User className="w-4 h-4 text-slate-500" />
-                      <span className="font-medium">{job.customerName}</span>
-                    </div>
-                    
-                    <div className="flex items-center gap-3 text-slate-600 dark:text-slate-400">
-                      <Phone className="w-4 h-4 text-slate-500" />
-                      <a 
-                        href={`tel:${job.phone}`}
-                        className="hover:text-blue-600 transition-colors"
-                      >
-                        {job.phone}
-                      </a>
-                    </div>
-
-                    <div className="flex items-start gap-3 text-slate-600 dark:text-slate-400">
-                      <Plus className="w-4 h-4 text-slate-500 mt-0.5" />
-                      <span className="text-sm">{job.additionalServices || "No additional services"}</span>
-                    </div>
-
-                    <div className="flex items-center gap-3 text-slate-600 dark:text-slate-400">
-                      <Calendar className="w-4 h-4 text-slate-500" />
-                      <span className="text-sm">
-                        {new Date(job.expectedCompletionDate).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Status Update */}
-                  <div className="pt-4 border-t space-y-3">
-                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300 block">
-                      Update Status
-                    </label>
-                    <select
-                      value={job.status}
-                      onChange={(e) =>
-                        updateJob(job.id, { status: e.target.value })
-                      }
-                      className="w-full border-2 border-slate-200 dark:border-slate-700 rounded-lg p-2.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                    >
-                      <option value="Pending">⏳ Pending</option>
-                      <option value="In Progress">🔧 In Progress</option>
-                      <option value="Completed">✅ Completed</option>
-                      <option value="Failed">❌ Failed</option>
-                    </select>
-
-                    <Button
-                      className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md"
-                      onClick={() =>
-                        updateJob(job.id, {
-                          expectedCompletionDate: new Date().toISOString(),
-                        })
-                      }
-                    >
-                      <Clock className="w-4 h-4 mr-2" />
-                      Update Completion Date
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
-      </div>
-    </>
+    </div>
   );
 }
+
+export default function EmployeeDashboardPage() {
+  const [projectsData, setProjectsData] = useState<Project[]>(defaultSample);
+
+  useEffect(() => {
+    let mounted = true;
+    projectsApi.fetchProjects().then((data) => {
+      if (!mounted) return;
+      if (data && data.length > 0) setProjectsData(data as Project[]);
+    }).catch(() => {
+      // ignore - keep defaults or localStorage fallback handled in helper
+    });
+    return () => { mounted = false; };
+  }, []);
+
+  const inProgressProjects = projectsData.filter((p) => p.status === "In Progress");
+  const inProgressCount = inProgressProjects.length;
+  const totalProjects = projectsData.length || 0;
+  // percent of projects that are In Progress (out of all projects)
+  const percentInProgress = totalProjects ? Math.round((inProgressCount / totalProjects) * 100) : 0;
+
+  // keep a small average progress value if still useful elsewhere (not used by bar anymore)
+  const avgProgress = inProgressCount
+    ? Math.round(inProgressProjects.reduce((s, p) => s + (p.progress || 0), 0) / inProgressCount)
+    : 0;
+
+  useEffect(() => {
+    // listen for updates from other components that write to localStorage
+    function handleUpdate() {
+      try {
+        const raw = localStorage.getItem("asms_projects");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) setProjectsData(parsed as Project[]);
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    window.addEventListener("asms_projects_updated", handleUpdate);
+    // also listen to storage events for cross-tab updates
+    function onStorage(e: StorageEvent) {
+      if (e.key === "asms_projects") handleUpdate();
+    }
+    window.addEventListener("storage", onStorage);
+
+    return () => {
+      window.removeEventListener("asms_projects_updated", handleUpdate);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
+  // helper to normalize different due date formats to YYYY-MM-DD
+  function normalizeToISO(d: string) {
+    if (!d) return null;
+    // if already in YYYY-MM-DD form
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+    // try parsing other common formats
+    const parsed = new Date(d);
+    if (!isNaN(parsed.getTime())) {
+      const y = parsed.getFullYear();
+      const m = String(parsed.getMonth() + 1).padStart(2, "0");
+      const day = String(parsed.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+    return null;
+  }
+
+  function normalizeDateDisplay(d: string) {
+    const iso = normalizeToISO(d);
+    if (!iso) return d || "";
+    const parsed = new Date(iso);
+    return parsed.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  }
+
+  const today = new Date();
+  const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
+    today.getDate()
+  ).padStart(2, "0")}`;
+  const todayDisplay = today.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+
+  const scheduledToday = projectsData.filter((p) => {
+    const iso = normalizeToISO(p.due as unknown as string);
+    return iso === todayISO && p.status !== "Completed";
+  });
+
+  return (
+    <div className="space-y-6">
+        <header className="mb-4">
+          <h1 className="text-2xl font-bold">Welcome !</h1>
+          <p className="text-gray-500 mt-1">Manage your tasks and appointments.</p>
+        </header>
+  <section className="grid grid-cols-2 gap-6">
+    <div className="col-span-1 bg-white p-6 rounded-lg shadow-sm" style={{ maxWidth: 600 }}>
+          <div className="flex items-start justify-between mb-4">
+            <h2 className="text-xl font-semibold">My Projects</h2>
+            <a href="/employee/projects" className="text-sm text-blue-600">View All</a>
+          </div>
+
+          {/* Summary for In Progress projects (aggregate percentage) */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#5e2a2aff" }}>In Progress</div>
+              <div style={{ color: "#292b2eff" }}>{inProgressCount} project{inProgressCount !== 1 ? "s" : ""}</div>
+            </div>
+
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              <div style={{ width: 160 }}>
+                <div style={{ height: 8, background: "#eef2f6", borderRadius: 9999, overflow: "hidden" }}>
+                  <div style={{ width: `${percentInProgress}%`, height: "100%", background: "#16a34a" }} />
+                </div>
+                <div style={{ fontSize: 12, color: "#000", fontWeight: 700, marginTop: 6 }}>{percentInProgress}% In Progress</div>
+              </div>
+            </div>
+          </div>
+
+          <ul className={`${styles.myProjects} space-y-4`}>
+            {inProgressProjects.length === 0 ? (
+              <li className={styles.projectItem}>
+                <div style={{ color: '#6b7280' }}>No projects in progress</div>
+              </li>
+            ) : (
+              inProgressProjects.map((p) => (
+                <li key={p.name} className={styles.projectItem}>
+                  <div className={styles.projectLeft}>
+                    <div className={styles.iconBox} style={{ background: p.status === 'In Progress' ? '#fff7ed' : '#fff', color: '#047857' }}>
+                      {/* simple status glyph */}
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 12h18" stroke="#047857" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </div>
+                    <div className={"project-meta"}>
+                      <div className="title">{p.name}</div>
+                      <div className="client">Client: {p.client}</div>
+                    </div>
+                  </div>
+                  <div className={styles.projectRight}>
+                    {/* due date kept optional; if you previously removed due dates, we can hide this */}
+                    <div style={{ fontSize: 12, color: '#6b7280' }}>{p.due}</div>
+                  </div>
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
+
+  <div className="col-span-1 bg-white p-6 rounded-lg shadow-sm">
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <h3 className={`${styles.cardHeading} text-base`}>Today's Schedule</h3>
+              <div style={{ color: '#6b7280', fontSize: 12 }}>{todayDisplay}</div>
+            </div>
+            <a href="/employee/projects" className="text-sm text-blue-600">View All</a>
+          </div>
+
+          <ul className={`${styles.scheduleList} space-y-4`}> 
+            {scheduledToday.length === 0 ? (
+              <li className={styles.scheduleItem}>
+                <div className={styles.scheduleLeft}>
+                  <div style={{ color: '#6b7280' }}>No projects scheduled for today</div>
+                </div>
+              </li>
+            ) : (
+              scheduledToday.map((p) => (
+                <li key={p.name} className={styles.scheduleItem}>
+                  <div className={styles.scheduleLeft}>
+                    <span className={`${styles.dot} ${styles.dotBlue}`} />
+                    <div>
+                      <div className={styles.eventTime}>Due: {normalizeDateDisplay(p.due)}</div>
+                      <div className={styles.eventTitle}>{p.name}</div>
+                      <div className={styles.eventClient}>Client: {p.client}</div>
+                    </div>
+                  </div>
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
+      </section>
+
+      <section className="bg-white p-4 rounded-lg shadow-sm" style={{ maxHeight: 250,maxWidth:450, overflow: "hidden" }}>
+        <h3 className="font-semibold mb-3">Workload Overview</h3>
+        <div>
+          {/* client component reads projects from localStorage or falls back to sample */}
+          <WorkloadOverview />
+        </div>
+      </section>
+    </div>
+  );
+}
+
+

@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from "react";
 import styles from "../employee/employee.module.css";
 import projectsApi from "../lib/projectsApi";
+import Link from 'next/link';
+import { teams as sharedTeams, members as sharedMembers, getTeamAverageProductivity } from "../lib/teamData";
 
 type Project = {
   name: string;
@@ -323,10 +325,62 @@ export default function EmployeeDashboardPage() {
         </div>
       </div>
 
-      {/* Workload overview moved up into the main flow to reduce vertical spacing */}
-      <div className={`bg-white p-4 rounded-lg shadow-sm ${styles.workloadSection}`}>
-        <h3 className="font-semibold mb-3">Workload Overview</h3>
-        <WorkloadOverview />
+      {/* Workload Overview and Team Overview side-by-side */}
+      <div className="flex flex-col md:flex-row md:items-start md:space-x-4">
+        <div className={`flex-1 bg-white p-4 rounded-lg shadow-sm ${styles.workloadSection}`}>
+          <h3 className="font-semibold mb-3">Workload Overview</h3>
+          <WorkloadOverview />
+        </div>
+
+  <div className="w-full md:w-2/3 bg-white p-6 rounded-lg shadow-sm mt-4 md:mt-0">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold">Team Overview</h3>
+            <Link href="/employee/team_analysis" className="text-sm text-blue-600">View all</Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {sharedTeams.filter((t) => t.id !== 'all').map((t) => {
+              const membersOfTeam = sharedMembers.filter((m) => m.team === t.name);
+              const membersCount = membersOfTeam.length;
+              const projectsOfTeam = projectsData.filter((p) => ((p as any).teamName || '') === t.name).length;
+              const avgProd = getTeamAverageProductivity(t.name);
+
+              let fillClass = 'bg-orange-400';
+              if (avgProd >= 95) fillClass = 'bg-green-500';
+              else if (avgProd >= 90) fillClass = 'bg-teal-500';
+              else if (avgProd >= 85) fillClass = 'bg-yellow-400';
+
+              return (
+                <Link
+                  key={t.id}
+                  href={`/employee/team_analysis?team=${encodeURIComponent(t.name)}`}
+                  className="block"
+                  aria-label={`View ${t.name} details`}
+                >
+                  <div className="bg-white p-6 rounded-md shadow-sm hover:shadow-lg transition-shadow cursor-pointer">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="text-sm font-medium text-gray-800">{t.name}</div>
+                        <div className="text-xs text-gray-500">{membersCount} members • {projectsOfTeam} projects</div>
+                      </div>
+                      <div className="text-sm font-semibold text-gray-700 ml-2">{avgProd}%</div>
+                    </div>
+
+                    <div className="mt-3">
+                      <div className="w-full bg-gray-100 h-3 rounded overflow-hidden">
+                        <div className={`${fillClass} h-3`} style={{ width: `${avgProd}%` }} />
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between">
+                      <span className="text-xs text-gray-500">Productivity</span>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import projStyles from "./projects.module.css";
 import Link from "next/link";
+import { getMembersByTeamName, Member } from "../../lib/teamData";
 
 type Project = {
   name: string;
@@ -207,6 +208,30 @@ export default function ProjectsTable({ projects }: { projects: Project[] }) {
     }, 50);
   }
 
+  // Save edits made in the modal (startDate, completedDate, progress, etc.) back to rows
+  function saveSelectedProject() {
+    if (!selectedProject) return;
+    const idx = rows.findIndex((r) => r.name === selectedProject.name && r.due === selectedProject.due);
+    if (idx === -1) return;
+    setRows((prev) => {
+      const copy = [...prev];
+      copy[idx] = { ...copy[idx], ...selectedProject } as Project;
+      try {
+        localStorage.setItem('asms_projects', JSON.stringify(copy));
+        try { window.dispatchEvent(new Event('asms_projects_updated')); } catch (e) {}
+      } catch (e) {}
+      return copy;
+    });
+    // refresh the selectedProject from rows to reflect saved values
+    setTimeout(() => {
+      setSelectedProject((prev) => {
+        if (!prev) return null;
+        const updated = rows[idx];
+        return updated ? { ...updated } : null;
+      });
+    }, 50);
+  }
+
   return (
     <div className={projStyles.tableWrap}>
       <table className={projStyles.table}>
@@ -263,9 +288,42 @@ export default function ProjectsTable({ projects }: { projects: Project[] }) {
               <td style={{ color: "#6b7280" }}>{p.completedDate ? p.completedDate : "Pending"}</td>
               <td>
                 <div style={{ position: "relative" }}>
-                  <div
-                    className={projStyles.teamAvatars}
-                    onClick={(e) => toggleTeamDropdown(i, e.currentTarget as HTMLElement)}
+                  <div>
+                    <div style={{ marginBottom: 6 }}>
+                      {/* Team selector: choose which team this project belongs to */}
+                      <select
+                        aria-label={`Select team for ${p.name}`}
+                        value={(p as any).teamName || 'All Teams'}
+                        onChange={(e) => {
+                          const teamName = e.target.value;
+                          setRows((prev) => {
+                            const copy = [...prev];
+                            const r = { ...copy[i] } as any;
+                            r.teamName = teamName;
+                            // populate the row.team with members of the selected team
+                            const mapped = getMembersByTeamName(teamName).map((m) => ({ id: m.id, name: m.name }));
+                            r.team = mapped;
+                            copy[i] = r;
+                            try {
+                              localStorage.setItem('asms_projects', JSON.stringify(copy));
+                              window.dispatchEvent(new Event('asms_projects_updated'));
+                            } catch (e) {}
+                            return copy;
+                          });
+                        }}
+                        className={projStyles.teamSelect}
+                      >
+                        {/* small list of teams */}
+                        <option>All Teams</option>
+                        <option>Engine Team</option>
+                        <option>Transmission Team</option>
+                        <option>Electrical Team</option>
+                        <option>Brakes Team</option>
+                      </select>
+                    </div>
+                    <div
+                      className={projStyles.teamAvatars}
+                      onClick={(e) => toggleTeamDropdown(i, e.currentTarget as HTMLElement)}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => {
@@ -301,16 +359,30 @@ export default function ProjectsTable({ projects }: { projects: Project[] }) {
                   {openTeamIndex === i && (
                     <div className={`${projStyles.teamDropdown} ${openTeamUpIndex === i ? projStyles.teamDropdownUp : ""}`} role="dialog" aria-label={`Select team members for ${p.name}`}>
                       <div className={projStyles.teamList}>
-                        {(p.team && p.team.length > 0 ? p.team : [{ id: "member-1", name: "Alice" }, { id: "member-2", name: "Bob" }, { id: "member-3", name: "Cara" }]).map((m) => (
-                          <label key={m.id} className={projStyles.teamRow}>
-                            <input
-                              type="checkbox"
-                              checked={!!(tempSelected && tempSelected.includes(m.id))}
-                              onChange={() => handleMemberToggle(i, m.id)}
-                            />
-                            <span style={{ marginLeft: 8 }}>{m.name}</span>
-                          </label>
-                        ))}
+                        {(() => {
+                          const fallback = [{ id: "member-1", name: "Alice" }, { id: "member-2", name: "Bob" }, { id: "member-3", name: "Cara" }];
+                          let dropdownMembers: { id: string; name: string }[] = [];
+                          if (p.team && p.team.length > 0) {
+                            dropdownMembers = p.team.map((m) => ({ id: String(m.id), name: m.name }));
+                          } else {
+                            const teamName = (p as any).teamName as string | undefined;
+                            if (teamName) {
+                              dropdownMembers = getMembersByTeamName(teamName).map((mm: Member) => ({ id: mm.id, name: mm.name }));
+                            } else {
+                              dropdownMembers = fallback;
+                            }
+                          }
+                          return dropdownMembers.map((m) => (
+                            <label key={m.id} className={projStyles.teamRow}>
+                              <input
+                                type="checkbox"
+                                checked={!!(tempSelected && tempSelected.includes(m.id))}
+                                onChange={() => handleMemberToggle(i, m.id)}
+                              />
+                              <span style={{ marginLeft: 8 }}>{m.name}</span>
+                            </label>
+                          ));
+                        })()}
                       </div>
                       <div className={projStyles.teamDropdownFooter}>
                         <button className={projStyles.btnSecondary} onClick={cancelTeamSelection}>Cancel</button>
@@ -318,6 +390,7 @@ export default function ProjectsTable({ projects }: { projects: Project[] }) {
                       </div>
                     </div>
                   )}
+                </div>
                 </div>
               </td>
               <td style={{ color: "#2563eb", fontWeight: 600 }}>
@@ -435,7 +508,10 @@ export default function ProjectsTable({ projects }: { projects: Project[] }) {
                 ) : (
                   <div className="text-sm text-gray-600">Project already completed</div>
                 )}
-                <button className={projStyles.btnSecondary} onClick={closeDetails}>Close</button>
+                <div className="flex gap-2">
+                  <button className={projStyles.btnPrimary} onClick={saveSelectedProject}>Save</button>
+                  <button className={projStyles.btnSecondary} onClick={closeDetails}>Close</button>
+                </div>
               </div>
             </div>
           </div>

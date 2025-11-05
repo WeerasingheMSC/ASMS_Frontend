@@ -93,7 +93,7 @@ export default function TeamAnalysis() {
   const getStatusColor = (status: string) => {
     switch(status) {
       case 'Completed': return 'bg-green-100 text-green-700';
-      case 'Almost Done': return 'bg-blue-100 text-blue-700';
+      case 'Almost Done': return 'bg-blue-950 text-blue-700';
       case 'On Track': return 'bg-emerald-100 text-emerald-700';
       case 'In Progress': return 'bg-yellow-100 text-yellow-700';
       case 'Started': return 'bg-orange-100 text-orange-700';
@@ -237,7 +237,7 @@ export default function TeamAnalysis() {
           <div className="grid grid-cols-4 gap-4">
             <div className="bg-white border border-gray-200 rounded-lg p-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
+                <div className="p-2 bg-blue-950 rounded-lg">
                   <Users className="w-5 h-5 text-blue-600" />
                 </div>
                 <div>

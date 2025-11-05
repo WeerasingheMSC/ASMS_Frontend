@@ -79,12 +79,12 @@
 .filterCompleted { background: #ecfdf5; color: #065f46; border-color: #bbf7d0; }
 .filterOverdue { background: #fff1f2; color: #9f1239; border-color: #ffd6dd; }
 
-.tableWrap { margin-top: 25px;  overflow: visible; box-shadow: 0 8px 24px rgba(252, 252, 252, 0.08); background: #ffffff; }
+.tableWrap { margin-top: 25px; overflow: hidden; box-shadow: 0 8px 24px rgba(16,24,40,0.06); background: #ffffff; border-radius: 12px; }
 .table { width:100%; border-collapse: collapse; }
-.table thead th { background: #2d22ff; color: #ffffff !important; text-transform: none; font-size: 1.1rem; padding: 25px 20px; text-align: left; border-bottom: none; font-weight:700; }
-.table tbody td { padding: 20px 20px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; color: #374151; }
-.table tbody tr:nth-child(even) { background: #f8fafc; }
-.table tbody tr:hover { background: #f1f5ff; }
+.table thead th { background: #152a52; color: #ffffff !important; text-transform: none; font-size: 1.05rem; padding: 20px 20px; text-align: left; border-bottom: none; font-weight:700; }
+.table tbody td { padding: 18px 20px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; color: #374151; }
+.table tbody tr:nth-child(even) { background: #fbfdff; }
+.table tbody tr:hover { background: #f8fafc; }
 .projectNameCell { display:flex; align-items:center; gap:12px; }
 .projectDot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:8px; }
 

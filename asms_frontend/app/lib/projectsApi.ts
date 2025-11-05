@@ -13,8 +13,10 @@ export type ProjectShape = {
 
 const LOCAL_KEY = "asms_projects";
 
-// base URL for backend API. Set NEXT_PUBLIC_API_BASE in .env.local (e.g. http://localhost:8080)
-const API_BASE = typeof process !== 'undefined' ? (process.env.NEXT_PUBLIC_API_BASE || '') : '';
+// base URL for backend API. It prefers NEXT_PUBLIC_API_URL (used elsewhere),
+// falls back to NEXT_PUBLIC_API_BASE, and finally defaults to localhost:8080.
+// Set in .env.local (example: NEXT_PUBLIC_API_URL=http://localhost:8080)
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080');
 
 async function fetchWithTimeout(url: string, opts: RequestInit = {}, ms = 3000) {
   const controller = new AbortController();

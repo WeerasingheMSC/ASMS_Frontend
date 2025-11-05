@@ -13,11 +13,16 @@ export type ProjectShape = {
 
 const LOCAL_KEY = "asms_projects";
 
+// base URL for backend API. Set NEXT_PUBLIC_API_BASE in .env.local (e.g. http://localhost:8080)
+const API_BASE = typeof process !== 'undefined' ? (process.env.NEXT_PUBLIC_API_BASE || '') : '';
+
 async function fetchWithTimeout(url: string, opts: RequestInit = {}, ms = 3000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), ms);
   try {
-    const res = await fetch(url, { ...opts, signal: controller.signal });
+    // if API_BASE is set use absolute URL, otherwise use given relative URL
+    const target = API_BASE ? `${API_BASE}${url.startsWith('/') ? url : `/${url}`}` : url;
+    const res = await fetch(target, { ...opts, signal: controller.signal });
     clearTimeout(id);
     return res;
   } catch (e) {
@@ -59,7 +64,7 @@ export async function fetchProjects(): Promise<ProjectShape[]> {
 export async function saveProjects(projects: ProjectShape[]) {
   // attempt to POST to backend, but don't fail if network not available
   try {
-    const resp = await fetchWithTimeout("/api/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(projects) }, 3000);
+  const resp = await fetchWithTimeout("/api/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(projects) }, 3000);
     if (!resp.ok) {
       // still save locally
       try { localStorage.setItem(LOCAL_KEY, JSON.stringify(projects)); } catch (e) {}

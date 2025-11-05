@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
+import Navbar from '../components/Navbar'
 import { IoMdClose } from "react-icons/io";
 import { TextField, InputAdornment, IconButton, Tooltip, Checkbox } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
@@ -359,19 +360,21 @@ const EmployeesPage = () => {
       <Sidebar activeItem="Employees" />
 
       {/* Main Content */}
-      <div className='w-5/6 p-8 bg-gray-50 relative overflow-y-auto'>
-        {/* Message Display */}
-        {message.text && (
-          <div className={`mb-4 p-4 rounded-lg ${
-            message.type === 'success' 
-              ? 'bg-green-50 border border-green-200 text-green-800' 
-              : 'bg-red-50 border border-red-200 text-red-800'
-          }`}>
-            {message.text}
-          </div>
-        )}
+      <div className='flex-1 flex flex-col'>
+        <Navbar />
+        <div className='flex-1 p-8 bg-gray-50 relative overflow-y-auto'>
+          {/* Message Display */}
+          {message.text && (
+            <div className={`mb-4 p-4 rounded-lg ${
+              message.type === 'success' 
+                ? 'bg-green-50 border border-green-200 text-green-800' 
+                : 'bg-red-50 border border-red-200 text-red-800'
+            }`}>
+              {message.text}
+            </div>
+          )}
 
-        <div className='flex justify-between items-center mb-6'>
+          <div className='flex justify-between items-center mb-6'>
           <h1 className='text-3xl font-bold text-gray-800'>Employee Management</h1>
           <button
             onClick={() => setIsPopupOpen(true)}
@@ -894,6 +897,7 @@ const EmployeesPage = () => {
             </div>
           </>
         )}
+        </div>
       </div>
     </div>
   )

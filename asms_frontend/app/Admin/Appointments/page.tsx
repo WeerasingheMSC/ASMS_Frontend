@@ -1,6 +1,7 @@
 'use client'
 import React, { useState } from 'react'
 import Sidebar from '../components/Sidebar'
+import Navbar from '../components/Navbar'
 import { TextField, InputAdornment, IconButton, Tooltip, Tabs, Tab, Box, Chip, Checkbox } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -202,9 +203,11 @@ const AppointmentsPage = () => {
     <div className='flex h-screen overflow-hidden'>
       <Sidebar activeItem="Appointments" />
 
-      <div className='w-5/6 p-8 bg-gray-50 relative overflow-y-auto'>
-        <div className='flex justify-between items-center mb-6'>
-          <h1 className='text-3xl font-bold text-gray-800'>Appointment Management</h1>
+      <div className='flex-1 flex flex-col'>
+        <Navbar />
+        <div className='flex-1 p-8 bg-gray-50 relative overflow-y-auto'>
+          <div className='flex justify-between items-center mb-6'>
+            <h1 className='text-3xl font-bold text-gray-800'>Appointment Management</h1>
           <div className='flex gap-4'>
             <div className='bg-white px-4 py-2 rounded-lg shadow-md'>
               <span className='text-sm text-gray-600'>Pending: </span>
@@ -269,7 +272,7 @@ const AppointmentsPage = () => {
             <Tooltip title={selectedRows.length > 0 ? `Export ${selectedRows.length} selected rows to CSV` : 'Export all filtered data to CSV'}>
               <button
                 onClick={handleExportCSV}
-                className='bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors shadow-md flex items-center gap-2 whitespace-nowrap'
+                className='bg-green-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-600 transition-colors shadow-md flex items-center gap-2 whitespace-nowrap'
               >
                 <FileDownloadIcon />
                 Export to CSV
@@ -655,6 +658,7 @@ const AppointmentsPage = () => {
             </div>
           </>
         )}
+        </div>
       </div>
     </div>
   )

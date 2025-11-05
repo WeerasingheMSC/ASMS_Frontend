@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
+import Navbar from '../components/Navbar'
 import { TextField, InputAdornment, IconButton, Tooltip, Checkbox } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
@@ -162,24 +163,43 @@ const CustomersPage = () => {
       <Sidebar activeItem="Customers" />
 
       {/* Main Content */}
-      <div className='w-5/6 p-8 bg-gray-50 relative overflow-y-auto'>
-        {/* Message Display */}
-        {message.text && (
-          <div className={`mb-4 p-4 rounded-lg ${
-            message.type === 'success' 
-              ? 'bg-green-50 border border-green-200 text-green-800' 
-              : 'bg-red-50 border border-red-200 text-red-800'
-          }`}>
-            {message.text}
+      <div className='flex-1 flex flex-col'>
+        <Navbar />
+        <div className='flex-1 p-8 bg-gray-50 relative overflow-y-auto'>
+          {/* Message Display */}
+          {message.text && (
+            <div className={`mb-4 p-4 rounded-lg ${
+              message.type === 'success' 
+                ? 'bg-green-50 border border-green-200 text-green-800' 
+                : 'bg-red-50 border border-red-200 text-red-800'
+            }`}>
+              {message.text}
+            </div>
+          )}
+
+          <div className='flex-1 bg-gray-50 relative overflow-y-auto'>
+             <div className='flex justify-between items-center mb-6'>
+            <h1 className='text-3xl font-bold text-gray-800'>Customer Management</h1>
+            {/* Summary Stats */}
+           <div className='flex gap-4'>
+          <div className='bg-white px-4 py-2 rounded-lg shadow-md'>
+              <span className='text-sm text-gray-600'>Total Customers: </span>
+              <span className='font-bold text-blue-600'>{customers.length}</span>
+            </div>
+             <div className='bg-white px-4 py-2 rounded-lg shadow-md'>
+              <span className='text-sm text-gray-600'>Active Customers: </span>
+              <span className='font-bold text-green-600'>{customers.filter(c => c.isActive).length}</span>
+            </div>
+             <div className='bg-white px-4 py-2 rounded-lg shadow-md'>
+              <span className='text-sm text-gray-600'>Inactive Customers:</span>
+              <span className='font-bold text-red-600'> {customers.filter(c => !c.isActive).length}</span>
+            </div>
+            </div>
+            </div>
           </div>
-        )}
 
-        <div className='flex justify-between items-center mb-6'>
-          <h1 className='text-3xl font-bold text-gray-800'>Customer Management</h1>
-        </div>
-
-        {/* Professional Search Bar and Export Section */}
-        <div className='rounded-lg p-4 mb-4'>
+          {/* Professional Search Bar and Export Section */}
+          <div className='rounded-lg p-4 mb-4'>
           <div className='flex gap-4 items-center'>
             <div className='flex-1'>
               <TextField
@@ -211,7 +231,7 @@ const CustomersPage = () => {
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: '#f9fafb',
                     '& fieldset': {
-                      borderColor: '#e5e7eb',
+                      borderColor: '#000000',
                     },
                     '&:hover fieldset': {
                       borderColor: '#6366f1',
@@ -226,7 +246,7 @@ const CustomersPage = () => {
             <Tooltip title={selectedRows.length > 0 ? `Export ${selectedRows.length} selected rows to CSV` : 'Export all filtered data to CSV'}>
               <button
                 onClick={handleExportCSV}
-                className='bg-indigo-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-indigo-700 transition-colors shadow-md flex items-center gap-2 whitespace-nowrap'
+                className='bg-green-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-600 transition-colors shadow-md flex items-center gap-2 whitespace-nowrap'
               >
                 <FileDownloadIcon />
                 Export to CSV
@@ -239,25 +259,8 @@ const CustomersPage = () => {
             </div>
           )}
         </div>
-        {/* Summary Stats */}
-        <div className='mb-6 grid grid-cols-1 md:grid-cols-3 gap-4'>
-          <div className='bg-white p-6 rounded-lg shadow-md'>
-            <h3 className='text-gray-600 text-sm font-medium'>Total Customers</h3>
-            <p className='text-3xl font-bold text-indigo-600 mt-2'>{customers.length}</p>
-          </div>
-          <div className='bg-white p-6 rounded-lg shadow-md'>
-            <h3 className='text-gray-600 text-sm font-medium'>Active Customers</h3>
-            <p className='text-3xl font-bold text-green-600 mt-2'>
-              {customers.filter(c => c.isActive).length}
-            </p>
-          </div>
-          <div className='bg-white p-6 rounded-lg shadow-md'>
-            <h3 className='text-gray-600 text-sm font-medium'>Inactive Customers</h3>
-            <p className='text-3xl font-bold text-red-600 mt-2'>
-              {customers.filter(c => !c.isActive).length}
-            </p>
-          </div>
-        </div>
+
+        
 
         {/* Customer Table */}
         <div className='bg-white rounded-lg shadow-md overflow-hidden'>
@@ -356,8 +359,7 @@ const CustomersPage = () => {
             </tbody>
           </table>
         </div>
-
-        
+        </div>
       </div>
     </div>
   )

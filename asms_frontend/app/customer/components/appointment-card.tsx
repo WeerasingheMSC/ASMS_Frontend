@@ -3,12 +3,13 @@
 import { useState } from "react"
 import { Card } from "../components/ui/card"
 import { Button } from "../components/ui/button"
-import { Calendar, Clock, Wrench, Star } from "lucide-react"
+import { Calendar, Clock, Wrench, Star, Trash2 } from "lucide-react"
 
 interface AppointmentCardProps {
   appointment: any
   hasReview: boolean
   onReviewSubmit: (rating: string, comment: string) => void
+   onCancel: (appointmentId: string) => void
 }
 
 const STATUS_CONFIG = {
@@ -20,11 +21,17 @@ const STATUS_CONFIG = {
   cancelled: { badge: "bg-red-100 text-red-800", label: "Cancelled" },
 }
 
-export default function AppointmentCard({ appointment, hasReview, onReviewSubmit }: AppointmentCardProps) {
+export default function AppointmentCard({ appointment, hasReview, onReviewSubmit,onCancel }: AppointmentCardProps) {
   const [showReviewModal, setShowReviewModal] = useState(false)
   const config = STATUS_CONFIG[appointment.status as keyof typeof STATUS_CONFIG]
   const appointmentDate = new Date(appointment.date)
   const dateStr = appointmentDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+//   const handleCancel = () => {
+//     // You can call an API here to cancel the appointment
+//     console.log(`Cancelling appointment ${appointment.id}`)
+//     // For demo, we can just set status to cancelled locally
+//     appointment.status = "cancelled"
+//   }
 
   return (
     <Card className="hover:shadow-lg transition-shadow overflow-hidden">
@@ -81,8 +88,60 @@ export default function AppointmentCard({ appointment, hasReview, onReviewSubmit
           <div className="mb-4 p-3 bg-gray-100 rounded text-sm text-black">{appointment.notes}</div>
         )}
 
+        
+        {/* Action Buttons - Bottom Right Corner */}
+        <div className="flex justify-end space-x-2 pt-4 ">
+          {/* Cancel Button - only if pending */}
+          {appointment.status === "pending" && (
+            <Button
+              onClick={() => onCancel(appointment.id)}
+              variant="outline"
+              className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+              size="sm"
+            >
+              <Trash2 className="w-4 h-4 mr-1" />
+              Cancel
+            </Button>
+          )}
+
+           {/* Review Button - only if completed and no review */}
+          {appointment.status === "completed" && !hasReview && (
+            <Button 
+              onClick={() => setShowReviewModal(true)} 
+              variant="outline"
+              className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300"
+              size="sm"
+            >
+              <Star className="w-4 h-4 mr-1" />
+              Review
+            </Button>
+          )}
+
+          {/* Review Submitted - only if completed and has review */}
+          {hasReview && appointment.status === "completed" && (
+            <div className="flex items-center text-green-600 text-sm font-medium bg-green-50 px-3 py-2 rounded-lg border border-green-200">
+              <Star className="w-4 h-4 mr-1 fill-green-600" />
+              Reviewed
+            </div>
+          )}
+        </div>
+      </div>
+
+        {/* Cancel Button - only if pending */}
+        {/* {appointment.status === "pending" && (
+          <Button
+            onClick={() => onCancel(appointment.id)}
+            variant="destructive"
+            className="w-full mb-3 bg-red-600 hover:bg-red-700 text-white"
+          >
+            <div className="w-4 h-4 mr-2" />
+            Cancel Appointment
+          </Button>
+        )} */}
+
+
         {/* Review Button */}
-        {appointment.status === "completed" && !hasReview && (
+        {/* {appointment.status === "completed" && !hasReview && (
           <Button onClick={() => setShowReviewModal(true)} variant="outline" className="w-full bg-white border-gray-400 text-gray-500 hover:bg-gray-50">
             <Star className="w-4 h-4 mr-2" />
             Leave Review
@@ -91,7 +150,7 @@ export default function AppointmentCard({ appointment, hasReview, onReviewSubmit
         {hasReview && appointment.status === "completed" && (
           <div className="p-3 bg-green-50 rounded text-sm text-green-800">✓ Review submitted</div>
         )}
-      </div>
+      </div> */}
     </Card>
   )
 }

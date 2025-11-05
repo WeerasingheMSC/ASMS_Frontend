@@ -129,7 +129,7 @@ export default function BookingWizard({ onClose }: BookingWizardProps) {
           
           {/* Active Progress Bar */}
           <div 
-            className="absolute top-5 left-0 h-1 bg-gradient-to-r from-primary to-primary-600 rounded-full transition-all duration-500"
+            className="absolute top-5 left-0 h-1 bg-gradient-to-r from-gray-600 to-primary-600 rounded-full transition-all duration-500"
             style={{ width: `${((step - 1) / 3) * 100}%` }}
           />
 
@@ -147,8 +147,8 @@ export default function BookingWizard({ onClose }: BookingWizardProps) {
                       status === "completed"
                         ? "bg-green-500 text-white scale-105"
                         : status === "active"
-                          ? "bg-primary text-white scale-110 shadow-lg ring-4 ring-primary/20"
-                          : "bg-white text-gray-400 border-2 border-gray-200"
+                          ? "bg-gray-600 text-white scale-110 shadow-lg ring-4 ring-primary/20"
+                          : "bg-white text-gray-00 border-2 border-gray-200"
                     }`}
                   >
                     {status === "completed" ? (
@@ -162,7 +162,7 @@ export default function BookingWizard({ onClose }: BookingWizardProps) {
                   <span
                     className={`mt-2 text-xs font-medium transition-colors ${
                       status === "active"
-                        ? "text-foreground"
+                        ? "text-black"
                         : status === "completed"
                           ? "text-green-600"
                           : "text-muted-foreground"

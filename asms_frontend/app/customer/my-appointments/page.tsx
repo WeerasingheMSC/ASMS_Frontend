@@ -60,7 +60,7 @@ const MOCK_APPOINTMENTS = [
     serviceType: "General Service",
     date: new Date().toISOString(),
     time: "11:30 AM",
-    status: "in-service",
+    status: "pending",
     notes: "",
     review: null,
   },
@@ -142,6 +142,17 @@ export default function CustomerPage() {
     }
   }
 
+  const handleCancelAppointment = (appointmentId: string) => {
+  setAppointments(prev =>
+    prev.map(a =>
+      a.id === appointmentId ? { ...a, status: "cancelled" } : a
+    )
+  )
+  // Optionally, call API to cancel on server
+  console.log("Cancelled appointment", appointmentId)
+}
+
+
   const filteredAppointments = appointments.filter((apt) => {
     const matchesStatus = filterStatus ? apt.status === filterStatus : true
     const matchesSearch = searchQuery
@@ -200,7 +211,7 @@ export default function CustomerPage() {
                   <Button
                     onClick={() => setShowWizard(true)}
                     size="lg"
-                    className="bg-primary hover:bg-primary-600 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 px-6 py-6"
+                    className="bg-blue-600 hover:bg-blue-400 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 px-6 py-6"
                   >
                     <Plus className="w-5 h-5 mr-2" />
                     New Appointment
@@ -230,9 +241,9 @@ export default function CustomerPage() {
                       <p className="text-muted-foreground text-sm font-medium mb-1">Total</p>
                       <p className="text-3xl font-bold text-black">{appointments.length}</p>
                     </div>
-                    <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
+                    {/* <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
                       <Filter className="w-6 h-6 text-primary" />
-                    </div>
+                    </div> */}
                   </div>
                 </div>
                 
@@ -244,9 +255,9 @@ export default function CustomerPage() {
                         {appointments.filter((a) => ["pending", "confirmed"].includes(a.status)).length}
                       </p>
                     </div>
-                    <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
+                    {/* <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
                       <div className="w-6 h-6 text-primary font-bold">📅</div>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
 
@@ -258,9 +269,9 @@ export default function CustomerPage() {
                         {appointments.filter((a) => a.status === "in-service").length}
                       </p>
                     </div>
-                    <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center">
+                    {/* <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center">
                       <div className="w-6 h-6 text-purple-600 font-bold">⚙️</div>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
 
@@ -272,9 +283,9 @@ export default function CustomerPage() {
                         {appointments.filter((a) => a.status === "completed").length}
                       </p>
                     </div>
-                    <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
+                    {/* <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
                       <div className="w-6 h-6 text-green-600 font-bold">✓</div>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               </div>
@@ -282,7 +293,7 @@ export default function CustomerPage() {
               {/* Filter Tabs */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <Filter className="w-5 h-5 text-muted-foreground" />
+                  {/* <Filter className="w-5 h-5 text-muted-foreground" /> */}
                   <h3 className="text-lg font-semibold text-black">Filter by Status</h3>
                 </div>
                 
@@ -291,8 +302,8 @@ export default function CustomerPage() {
                     onClick={() => setFilterStatus(null)}
                     className={`px-5 py-2.5 rounded-xl font-medium transition-all duration-200 whitespace-nowrap ${
                       filterStatus === null
-                        ? "bg-primary text-white shadow-md scale-105"
-                        : "bg-gray-50 text-foreground border border-gray-200 hover:border-primary hover:bg-blue-50"
+                        ? "bg-blue-600 text-white shadow-md scale-105"
+                        : "bg-gray-50 text-foreground border border-gray-200 hover:border-gray-200 "
                     }`}
                   >
                     All ({appointments.length})
@@ -306,8 +317,8 @@ export default function CustomerPage() {
                         onClick={() => setFilterStatus(status.value)}
                         className={`px-5 py-2.5 rounded-xl font-medium transition-all duration-200 whitespace-nowrap border ${
                           filterStatus === status.value
-                            ? "bg-primary text-white shadow-md scale-105 border-primary"
-                            : `${status.color} hover:scale-105 hover:shadow-md`
+                            ? "bg-blue-600 text-white shadow-md scale-105 border-gray-200"
+                            : `bg-gray-50 hover:scale-105 hover:shadow-md border-gray-200`
                         }`}
                       >
                         {status.label} ({count})
@@ -348,6 +359,7 @@ export default function CustomerPage() {
                         onReviewSubmit={(rating, comment) =>
                           handleReviewSubmit(appointment.id, rating, comment)
                         }
+                        onCancel={handleCancelAppointment}
                       />
                     ))}
                   </div>

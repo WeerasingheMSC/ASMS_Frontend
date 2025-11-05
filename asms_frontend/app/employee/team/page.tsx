@@ -5,6 +5,7 @@ import styles from "../../styles/team.module.css"
 import TeamMembersTable from "../../components/team/team-members-table"
 import TeamForm from "../../components/team/team-form"
 import FullTeamForm from "../../components/team/full-team-form"
+import TeamDetails from "../../components/team/team-details"
 import { getToken, removeToken, getCurrentUser } from "../../utils/auth"
 
 interface Team {
@@ -45,26 +46,42 @@ interface TeamMember {
   supervisorName?: string
 }
 
+interface TeamStatsDTO {
+  teamId: number
+  teamName: string
+  specialization: string
+  totalMembers: number
+  totalWorkingHours: number
+  averageAge: number
+  teamMembers: TeamMember[]
+}
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 export default function TeamPage() {
   const [teams, setTeams] = useState<Team[]>([])
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
+  const [teamStats, setTeamStats] = useState<TeamStatsDTO[]>([])
   const [employee, setEmployee] = useState<Employee | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [showTeamForm, setShowTeamForm] = useState(false)
+  const [showTeamDetails, setShowTeamDetails] = useState(false)
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null)
+  const [selectedTeamDetails, setSelectedTeamDetails] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [membersLoading, setMembersLoading] = useState(true)
+  const [statsLoading, setStatsLoading] = useState(true)
   const [employeeLoading, setEmployeeLoading] = useState(true)
   const [employeeError, setEmployeeError] = useState<string | null>(null)
   const [teamsError, setTeamsError] = useState<string | null>(null)
   const [membersError, setMembersError] = useState<string | null>(null)
+  const [statsError, setStatsError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<"teams" | "members">("teams")
 
   useEffect(() => {
     fetchTeams()
     fetchTeamMembers()
+    fetchTeamStats()
     fetchEmployee()
   }, [])
 
@@ -80,84 +97,43 @@ export default function TeamPage() {
 
       console.log("Fetching teams from API...");
       
-      const endpoints = [
-        `${API_URL}/api/employee/teams/all`,
-      ];
+      const response = await fetch(`${API_URL}/api/employee/teams/all`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-      let lastResponse = null;
-      let teamsData = null;
+      console.log("Teams response status:", response.status, response.statusText);
 
-      for (const endpoint of endpoints) {
-        try {
-          console.log(`Trying endpoint: ${endpoint}`);
-          const response = await fetch(endpoint, {
-            method: "GET",
-            headers: {
-              "Authorization": `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          });
+      if (response.ok) {
+        const teamsData = await response.json();
+        console.log("Teams data received:", teamsData);
 
-          lastResponse = response;
-          console.log(`Response status for ${endpoint}:`, response.status, response.statusText);
+        // Transform the API response to match your Team interface
+        const transformedTeams: Team[] = teamsData.map((team: any) => ({
+          id: team.id?.toString() || Math.random().toString(),
+          name: team.name || team.teamName || "Unnamed Team",
+          specialization: team.specialization || "General",
+          memberCount: team.memberCount || 0,
+          totalWorkingHours: team.totalWorkingHours || 0,
+          averageAge: team.averageAge || 0,
+          description: team.description,
+          employeeId: team.employeeId?.toString(),
+          employeeName: team.employeeName
+        }));
 
-          if (response.ok) {
-            const responseData = await response.json();
-            teamsData = responseData.data || responseData;
-            console.log(`Success with endpoint: ${endpoint}`, teamsData);
-            break;
-          } else {
-            const errorText = await response.text();
-            console.log(`Endpoint ${endpoint} failed:`, response.status, errorText);
-          }
-        } catch (error) {
-          console.log(`Endpoint ${endpoint} network error:`, error);
-          continue;
-        }
-      }
-
-      if (!teamsData) {
-        let errorMessage = "Unable to fetch teams data.";
-        
-        if (lastResponse) {
-          if (lastResponse.status === 401) {
-            errorMessage = "Token expired or invalid. Please log in again.";
-            removeToken();
-            window.location.href = '/signin';
-            return;
-          } else if (lastResponse.status === 403) {
-            errorMessage = "Access forbidden. You don't have permission to access teams data.";
-          } else if (lastResponse.status === 500) {
-            errorMessage = "Server error. Please try again later or contact support.";
-          } else {
-            errorMessage = `Server returned ${lastResponse.status}: ${lastResponse.statusText}`;
-          }
-        }
-        
+        setTeams(transformedTeams);
+      } else if (response.status === 401) {
+        const errorMessage = "Token expired or invalid. Please log in again.";
+        removeToken();
+        window.location.href = '/signin';
         throw new Error(errorMessage);
+      } else {
+        const errorText = await response.text();
+        throw new Error(`Server returned ${response.status}: ${errorText}`);
       }
-      
-      // Check if teamsData is an array
-      if (!Array.isArray(teamsData)) {
-        console.error("Teams data is not an array:", teamsData);
-        setTeams([]);
-        return;
-      }
-
-      // Transform the API response to match your Team interface
-      const transformedTeams: Team[] = teamsData.map((team: any) => ({
-        id: team.id?.toString() || Math.random().toString(),
-        name: team.name || team.teamName || "Unnamed Team",
-        specialization: team.specialization || "General",
-        memberCount: team.memberCount || team.employees?.length || 0,
-        totalWorkingHours: team.totalWorkingHours || 0,
-        averageAge: team.averageAge || 0,
-        description: team.description,
-        employeeId: team.employeeId?.toString(),
-        employeeName: team.employeeName
-      }));
-
-      setTeams(transformedTeams);
       
     } catch (error) {
       console.error("Error fetching teams:", error);
@@ -166,6 +142,61 @@ export default function TeamPage() {
       setTeams([]);
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchTeamStats = async () => {
+    try {
+      setStatsLoading(true)
+      setStatsError(null)
+      
+      const token = getToken();
+      if (!token) {
+        throw new Error("No authentication token found. Please log in again.");
+      }
+
+      console.log("Fetching team stats from API...");
+      
+      const response = await fetch(`${API_URL}/api/employee/all-teams-stats`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      console.log("Team stats response status:", response.status, response.statusText);
+
+      if (response.ok) {
+        const responseData = await response.json();
+        console.log("Team stats data received:", responseData);
+
+        // Handle both direct array and ApiResponse format
+        const statsData = responseData.data || responseData;
+        
+        if (Array.isArray(statsData)) {
+          setTeamStats(statsData);
+        } else {
+          console.error("Team stats data is not an array:", statsData);
+          setTeamStats([]);
+        }
+      } else if (response.status === 401) {
+        const errorMessage = "Token expired or invalid. Please log in again.";
+        removeToken();
+        window.location.href = '/signin';
+        throw new Error(errorMessage);
+      } else {
+        const errorText = await response.text();
+        throw new Error(`Server returned ${response.status}: ${errorText}`);
+      }
+      
+    } catch (error) {
+      console.error("Error fetching team stats:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred while fetching team stats";
+      setStatsError(errorMessage);
+      setTeamStats([]);
+    } finally {
+      setStatsLoading(false)
     }
   }
 
@@ -181,90 +212,56 @@ export default function TeamPage() {
 
       console.log("Fetching team members from API...");
       
-      // Use the endpoint that returns team members
-      const endpoints = [
-        `${API_URL}/api/employee/allteam`
-      ];
+      const response = await fetch(`${API_URL}/api/employee/allteam`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-      let lastResponse = null;
-      let membersData = null;
+      console.log("Team members response status:", response.status, response.statusText);
 
-      for (const endpoint of endpoints) {
-        try {
-          console.log(`Trying endpoint: ${endpoint}`);
-          const response = await fetch(endpoint, {
-            method: "GET",
-            headers: {
-              "Authorization": `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          });
+      if (response.ok) {
+        const responseData = await response.json();
+        console.log("Team members data received:", responseData);
 
-          lastResponse = response;
-          console.log(`Response status for ${endpoint}:`, response.status, response.statusText);
-
-          if (response.ok) {
-            const responseData = await response.json();
-            membersData = responseData.data || responseData;
-            console.log(`Success with endpoint: ${endpoint}`, membersData);
-            break;
-          } else {
-            const errorText = await response.text();
-            console.log(`Endpoint ${endpoint} failed:`, response.status, errorText);
-          }
-        } catch (error) {
-          console.log(`Endpoint ${endpoint} network error:`, error);
-          continue;
-        }
-      }
-
-      if (!membersData) {
-        let errorMessage = "Unable to fetch team members data.";
+        // Handle both direct array and ApiResponse format
+        const membersData = responseData.data || responseData;
         
-        if (lastResponse) {
-          if (lastResponse.status === 401) {
-            errorMessage = "Token expired or invalid. Please log in again.";
-            removeToken();
-            window.location.href = '/signin';
-            return;
-          } else if (lastResponse.status === 403) {
-            errorMessage = "Access forbidden. You don't have permission to access team members data.";
-          } else if (lastResponse.status === 500) {
-            errorMessage = "Server error. Please try again later or contact support.";
-          } else {
-            errorMessage = `Server returned ${lastResponse.status}: ${lastResponse.statusText}`;
-          }
+        if (Array.isArray(membersData)) {
+          // Transform the API response to match TeamMember interface
+          const transformedMembers: TeamMember[] = membersData.map((member: any) => ({
+            id: member.id || 0,
+            fullName: member.fullName || "",
+            nic: member.nic || "",
+            contactNo: member.contactNo || "",
+            birthDate: member.birthDate || "",
+            age: member.age || 0,
+            address: member.address || "",
+            city: member.city || "",
+            specialization: member.specialization || "",
+            joinedDate: member.joinedDate || "",
+            workingHoursPerDay: member.workingHoursPerDay || "",
+            teamId: member.teamId || "",
+            supervisorId: member.supervisorId,
+            supervisorName: member.supervisorName
+          }));
+
+          setTeamMembers(transformedMembers);
+        } else {
+          console.error("Team members data is not an array:", membersData);
+          setTeamMembers([]);
         }
-        
+      } else if (response.status === 401) {
+        const errorMessage = "Token expired or invalid. Please log in again.";
+        removeToken();
+        window.location.href = '/signin';
         throw new Error(errorMessage);
+      } else {
+        const errorText = await response.text();
+        throw new Error(`Server returned ${response.status}: ${errorText}`);
       }
-      
-      // Check if membersData is an array
-      if (!Array.isArray(membersData)) {
-        console.error("Team members data is not an array:", membersData);
-        setTeamMembers([]);
-        return;
-      }
-
-      // Transform the API response to match TeamMember interface
-      const transformedMembers: TeamMember[] = membersData.map((member: any) => ({
-        id: member.id || 0,
-        fullName: member.fullName || "",
-        nic: member.nic || "",
-        contactNo: member.contactNo || "",
-        birthDate: member.birthDate || "",
-        age: member.age || 0,
-        address: member.address || "",
-        city: member.city || "",
-        specialization: member.specialization || "",
-        joinedDate: member.joinedDate || "",
-        workingHoursPerDay: member.workingHoursPerDay || "",
-        teamId: member.teamId || "",
-        supervisorId: member.supervisorId,
-        supervisorName: member.supervisorName
-      }));
-
-      setTeamMembers(transformedMembers);
       
     } catch (error) {
       console.error("Error fetching team members:", error);
@@ -290,72 +287,42 @@ export default function TeamPage() {
         throw new Error("No authentication token found. Please log in again.");
       }
 
-      const endpoints = [
-        `${API_URL}/api/employee/current`,
-      ];
-      
-      let lastResponse = null;
-      let userData = null;
+      const response = await fetch(`${API_URL}/api/employee/current`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-      for (const endpoint of endpoints) {
-        try {
-          console.log(`Trying endpoint: ${endpoint}`);
-          const response = await fetch(endpoint, {
-            method: "GET",
-            headers: {
-              "Authorization": `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          });
+      console.log("Employee response status:", response.status, response.statusText);
 
-          lastResponse = response;
-          console.log(`Response status for ${endpoint}:`, response.status, response.statusText);
+      if (response.ok) {
+        const userData = await response.json();
+        console.log("Employee data received:", userData);
 
-          if (response.ok) {
-            userData = await response.json();
-            console.log(`Success with endpoint: ${endpoint}`, userData);
-            break;
-          } else {
-            const errorText = await response.text();
-            console.log(`Endpoint ${endpoint} failed:`, response.status, errorText);
-          }
-        } catch (error) {
-          console.log(`Endpoint ${endpoint} network error:`, error);
-          continue;
-        }
-      }
-
-      if (!userData) {
-        let errorMessage = "Unable to fetch employee data.";
-        
-        if (lastResponse) {
-          if (lastResponse.status === 403) {
-            errorMessage = "Access forbidden. You don't have permission to access employee data.";
-          } else if (lastResponse.status === 401) {
-            errorMessage = "Token expired or invalid. Please log in again.";
-            removeToken();
-            window.location.href = '/signin';
-          } else {
-            errorMessage = `Server returned ${lastResponse.status}: ${lastResponse.statusText}`;
-          }
+        const employeeInfo: Employee = {
+          id: userData.id || 1,
+          name: userData.firstName && userData.lastName 
+            ? `${userData.firstName} ${userData.lastName}`
+            : userData.username || userData.name || "Current Employee",
+          email: userData.email,
+          role: userData.role,
+          position: userData.position,
+          department: userData.department
         }
         
+        setEmployee(employeeInfo);
+        console.log("Employee info set:", employeeInfo);
+      } else if (response.status === 401) {
+        const errorMessage = "Token expired or invalid. Please log in again.";
+        removeToken();
+        window.location.href = '/signin';
         throw new Error(errorMessage);
+      } else {
+        const errorText = await response.text();
+        throw new Error(`Server returned ${response.status}: ${errorText}`);
       }
-
-      const employeeInfo: Employee = {
-        id: userData.id || 1,
-        name: userData.firstName && userData.lastName 
-          ? `${userData.firstName} ${userData.lastName}`
-          : userData.username || userData.name || "Current Employee",
-        email: userData.email,
-        role: userData.role,
-        position: userData.position,
-        department: userData.department
-      }
-      
-      setEmployee(employeeInfo);
-      console.log("Employee info set:", employeeInfo);
       
     } catch (error) {
       console.error("Error fetching employee:", error);
@@ -392,6 +359,11 @@ export default function TeamPage() {
     setShowTeamForm(true)
   }
 
+  const handleViewTeamDetails = (teamId: string) => {
+    setSelectedTeamDetails(teamId)
+    setShowTeamDetails(true)
+  }
+
   const handleFormClose = () => {
     setShowForm(false)
     setSelectedTeam(null)
@@ -401,23 +373,36 @@ export default function TeamPage() {
     setShowTeamForm(false)
   }
 
+  const handleTeamDetailsClose = () => {
+    setShowTeamDetails(false)
+    setSelectedTeamDetails(null)
+  }
+
   const handleMemberAdded = () => {
     fetchTeams()
     fetchTeamMembers()
+    fetchTeamStats()
     handleFormClose()
   }
 
   const handleTeamAdded = () => {
     fetchTeams()
     fetchTeamMembers()
+    fetchTeamStats()
     handleTeamFormClose()
   }
 
-  // Team summary statistics
-  const totalMembers = teams.reduce((sum, team) => sum + team.memberCount, 0)
-  const totalWorkingHours = teams.reduce((sum, team) => sum + team.totalWorkingHours, 0)
-  const averageAgeAll = teams.length > 0 
-    ? Math.round(teams.reduce((sum, team) => sum + team.averageAge, 0) / teams.length)
+  const handleTeamUpdated = () => {
+    fetchTeams()
+    fetchTeamMembers()
+    fetchTeamStats()
+  }
+
+  // Calculate summary statistics from team stats
+  const totalMembers = teamStats.reduce((sum, team) => sum + team.totalMembers, 0)
+  const totalWorkingHours = teamStats.reduce((sum, team) => sum + team.totalWorkingHours, 0)
+  const averageAgeAll = teamStats.length > 0 
+    ? Math.round(teamStats.reduce((sum, team) => sum + team.averageAge, 0) / teamStats.length)
     : 0
 
   // Retry fetches
@@ -433,10 +418,34 @@ export default function TeamPage() {
     fetchTeamMembers()
   }
 
+  const retryFetchStats = () => {
+    fetchTeamStats()
+  }
+
   const handleLogout = () => {
     removeToken();
     window.location.href = '/signin';
   }
+
+  // Get team data for display - prefer stats data if available, fallback to basic teams data
+  const getDisplayTeams = () => {
+    if (teamStats.length > 0) {
+      return teamStats.map(stat => ({
+        id: stat.teamId.toString(),
+        name: stat.teamName,
+        specialization: stat.specialization,
+        memberCount: stat.totalMembers,
+        totalWorkingHours: stat.totalWorkingHours,
+        averageAge: stat.averageAge,
+        description: "",
+        employeeId: "",
+        employeeName: ""
+      }))
+    }
+    return teams
+  }
+
+  const displayTeams = getDisplayTeams()
 
   return (
     <div className={styles.teamPage}>
@@ -527,7 +536,7 @@ export default function TeamPage() {
             <div className={styles.summaryIcon}>⏱️</div>
             <div className={styles.summaryContent}>
               <h3>{totalWorkingHours}</h3>
-              <p>Total Hours/Day</p>
+              <p>Total ManHours/Day</p>
             </div>
           </div>
           <div className={styles.summaryCard}>
@@ -540,7 +549,7 @@ export default function TeamPage() {
           <div className={styles.summaryCard}>
             <div className={styles.summaryIcon}>🏢</div>
             <div className={styles.summaryContent}>
-              <h3>{teams.length}</h3>
+              <h3>{displayTeams.length}</h3>
               <p>Total Teams</p>
             </div>
           </div>
@@ -582,24 +591,32 @@ export default function TeamPage() {
             </div>
           </div>
           
-          {loading ? (
+          {loading || statsLoading ? (
             <div className={styles.loadingState}>
               <div className={styles.loadingSpinner}></div>
               Loading teams...
             </div>
-          ) : teamsError ? (
+          ) : teamsError || statsError ? (
             <div className={styles.errorState}>
               <div className={styles.errorIcon}>⚠️</div>
               <h3>Failed to load teams</h3>
-              <p>{teamsError}</p>
-              <button 
-                onClick={retryFetchTeams}
-                className={styles.retryButton}
-              >
-                Try Again
-              </button>
+              <p>{teamsError || statsError}</p>
+              <div className={styles.errorActions}>
+                <button 
+                  onClick={retryFetchTeams}
+                  className={styles.retryButton}
+                >
+                  Retry Teams
+                </button>
+                <button 
+                  onClick={retryFetchStats}
+                  className={styles.retryButton}
+                >
+                  Retry Stats
+                </button>
+              </div>
             </div>
-          ) : teams.length === 0 ? (
+          ) : displayTeams.length === 0 ? (
             <div className={styles.emptyState}>
               <div className={styles.emptyIcon}>🏢</div>
               <h3>No Teams Found</h3>
@@ -615,7 +632,7 @@ export default function TeamPage() {
             </div>
           ) : (
             <div className={styles.teamsGrid}>
-              {teams.map((team) => (
+              {displayTeams.map((team) => (
                 <div key={team.id} className={styles.teamCard}>
                   <div className={styles.cardHeader}>
                     <h3 className={styles.cardTitle}>{team.name}</h3>
@@ -636,13 +653,28 @@ export default function TeamPage() {
                         <span className={styles.statValue}>{team.averageAge}</span>
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleAddMember(team.id)}
-                      className={`${styles.btnPrimary} ${styles.fullWidth}`}
-                    >
-                      <span className={styles.btnIcon}>+</span>
-                      Add Member to {team.name}
-                    </button>
+                    {teamStats.find(stat => stat.teamId.toString() === team.id) && (
+                      <div className={styles.teamDetails}>
+                        <p className={styles.teamDetailText}>
+                          This team has {team.memberCount} members working {team.totalWorkingHours} hours per day.
+                        </p>
+                      </div>
+                    )}
+                    <div className={styles.cardActions}>
+                      <button
+                        onClick={() => handleAddMember(team.id)}
+                        className={`${styles.btnPrimary} ${styles.cardButton}`}
+                      >
+                        <span className={styles.btnIcon}>+</span>
+                        Add Member
+                      </button>
+                      <button
+                        onClick={() => handleViewTeamDetails(team.id)}
+                        className={`${styles.btnSecondary} ${styles.cardButton}`}
+                      >
+                        View More
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -690,13 +722,13 @@ export default function TeamPage() {
               </button>
             </div>
           ) : (
-            <TeamMembersTable teams={teams} teamMembers={teamMembers} />
+            <TeamMembersTable teams={displayTeams} teamMembers={teamMembers} />
           )}
         </div>
       )}
 
       {/* Floating Add Member Button - Only show if we have teams */}
-      {teams.length > 0 && (
+      {displayTeams.length > 0 && (
         <button
           className={styles.floatingButton}
           onClick={() => handleAddMember()}
@@ -721,6 +753,15 @@ export default function TeamPage() {
         <FullTeamForm 
           onClose={handleTeamFormClose} 
           onSuccess={handleTeamAdded} 
+        />
+      )}
+
+      {/* Team Details Modal */}
+      {showTeamDetails && selectedTeamDetails && (
+        <TeamDetails 
+          teamId={selectedTeamDetails}
+          onClose={handleTeamDetailsClose}
+          onTeamUpdated={handleTeamUpdated}
         />
       )}
     </div>

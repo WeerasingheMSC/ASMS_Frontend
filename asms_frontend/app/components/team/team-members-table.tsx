@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import styles from "../../styles/team.module.css"
+import { getToken, removeToken } from "../../utils/auth" // Import the auth utilities
 
 interface TeamMember {
   id: number
@@ -131,7 +132,15 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
 
     try {
       setLoading(true)
-      const token = localStorage.getItem("token")
+      const token = getToken() // Use getToken instead of localStorage
+      
+      if (!token) {
+        alert("No authentication token found. Please log in again.");
+        removeToken();
+        window.location.href = '/signin';
+        return;
+      }
+
       const response = await fetch(`${API_URL}/api/employee/${memberId}`, {
         method: "DELETE",
         headers: {
@@ -149,6 +158,8 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
           errorMessage = "Access forbidden. You don't have permission to delete team members.";
         } else if (response.status === 401) {
           errorMessage = "Authentication failed. Please log in again.";
+          removeToken();
+          window.location.href = '/signin';
         }
         alert(errorMessage);
       }
@@ -163,10 +174,12 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
   const handleSaveMember = async (updatedMember: TeamMember) => {
     try {
       setLoading(true)
-      const token = localStorage.getItem("token")
+      const token = getToken() // Use getToken instead of localStorage
       
       if (!token) {
         alert("No authentication token found. Please log in again.");
+        removeToken();
+        window.location.href = '/signin';
         return;
       }
 
@@ -209,6 +222,8 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
           errorMessage = "Access forbidden. You don't have permission to update team members.";
         } else if (response.status === 401) {
           errorMessage = "Authentication failed. Please log in again.";
+          removeToken();
+          window.location.href = '/signin';
         } else if (response.status === 400) {
           errorMessage = "Invalid data. Please check all fields and try again.";
         }
@@ -347,6 +362,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
                         onClick={() => handleViewMember(member)}
                         className={styles.btnView}
                         title="View Details"
+                        disabled={loading}
                       >
                         👁️
                       </button>
@@ -354,6 +370,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
                         onClick={() => handleEditMember(member)}
                         className={styles.btnEdit}
                         title="Edit Member"
+                        disabled={loading}
                       >
                         ✏️
                       </button>
@@ -361,8 +378,9 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
                         onClick={() => handleDeleteMember(member.id)}
                         className={styles.btnDelete}
                         title="Delete Member"
+                        disabled={loading}
                       >
-                        🗑️
+                        {loading ? "⏳" : "🗑️"}
                       </button>
                     </div>
                   </td>
@@ -384,6 +402,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
               <button
                 onClick={() => setShowMemberModal(false)}
                 className={styles.closeButton}
+                disabled={loading}
               >
                 ×
               </button>
@@ -479,6 +498,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
                             fullName: e.target.value
                           })}
                           required
+                          disabled={loading}
                         />
                       </div>
                       <div className={styles.formGroup}>
@@ -491,6 +511,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
                             nic: e.target.value
                           })}
                           required
+                          disabled={loading}
                         />
                       </div>
                     </div>
@@ -506,6 +527,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
                             contactNo: e.target.value
                           })}
                           required
+                          disabled={loading}
                         />
                       </div>
                       <div className={styles.formGroup}>
@@ -517,6 +539,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
                             workingHoursPerDay: e.target.value
                           })}
                           required
+                          disabled={loading}
                         >
                           <option value="4">4 hours</option>
                           <option value="6">6 hours</option>
@@ -537,6 +560,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
                             teamId: e.target.value
                           })}
                           required
+                          disabled={loading}
                         >
                           {teamsArray.map(team => (
                             <option key={team.id} value={team.id}>
@@ -554,6 +578,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
                             specialization: e.target.value
                           })}
                           required
+                          disabled={loading}
                         >
                           {Object.entries(SpecializationEnum).map(([key, value]) => (
                             <option key={value} value={value}>
@@ -574,6 +599,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
                             city: e.target.value
                           })}
                           required
+                          disabled={loading}
                         >
                           {Object.entries(CityEnum).map(([key, value]) => (
                             <option key={value} value={value}>
@@ -594,6 +620,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
                         })}
                         rows={3}
                         required
+                        disabled={loading}
                       />
                     </div>
 
@@ -602,6 +629,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
                         type="button"
                         onClick={() => setShowMemberModal(false)}
                         className={styles.btnSecondary}
+                        disabled={loading}
                       >
                         Cancel
                       </button>
@@ -623,12 +651,14 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
                 <button
                   onClick={() => setModalMode("edit")}
                   className={styles.btnPrimary}
+                  disabled={loading}
                 >
                   Edit Member
                 </button>
                 <button
                   onClick={() => setShowMemberModal(false)}
                   className={styles.btnSecondary}
+                  disabled={loading}
                 >
                   Close
                 </button>

@@ -80,10 +80,8 @@ export default function TeamPage() {
 
       console.log("Fetching teams from API...");
       
-      // Try multiple possible endpoints for teams
       const endpoints = [
         `${API_URL}/api/employee/teams/all`,
-        `${API_URL}/api/employee/allteam`
       ];
 
       let lastResponse = null;

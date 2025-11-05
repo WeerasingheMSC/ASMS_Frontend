@@ -1,8 +1,77 @@
 'use client'
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import Sidebar from './components/Sidebar'
+import { getCustomerAppointments, AppointmentResponse } from '../lib/appointmentsApi'
 
 export default function CustomerDashboard() {
+  const [appointments, setAppointments] = useState<AppointmentResponse[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    fetchAppointments()
+  }, [])
+
+  const fetchAppointments = async () => {
+    try {
+      setLoading(true)
+      const data = await getCustomerAppointments()
+      setAppointments(data)
+      setError('')
+    } catch (err) {
+      console.error('Error fetching appointments:', err)
+      setError('Failed to load appointments')
+      setAppointments([]) // Fallback to empty array
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Calculate dashboard statistics
+  const upcomingAppointments = appointments.filter(apt => 
+    apt.status === 'PENDING' || apt.status === 'CONFIRMED'
+  ).length
+
+  const completedAppointments = appointments.filter(apt => 
+    apt.status === 'COMPLETED'
+  ).length
+
+  // Get recent appointments (last 3, sorted by date)
+  const recentAppointments = appointments
+    .sort((a, b) => new Date(b.createdAt || b.appointmentDate).getTime() - new Date(a.createdAt || a.appointmentDate).getTime())
+    .slice(0, 3)
+
+  // Utility functions
+  const getTimeAgo = (date: Date) => {
+    const now = new Date()
+    const diffInHours = Math.abs(now.getTime() - date.getTime()) / (1000 * 60 * 60)
+    
+    if (diffInHours < 1) return 'Just now'
+    if (diffInHours < 24) return `${Math.floor(diffInHours)} hours ago`
+    
+    const diffInDays = Math.floor(diffInHours / 24)
+    if (diffInDays === 1) return '1 day ago'
+    if (diffInDays < 7) return `${diffInDays} days ago`
+    
+    const diffInWeeks = Math.floor(diffInDays / 7)
+    if (diffInWeeks === 1) return '1 week ago'
+    return `${diffInWeeks} weeks ago`
+  }
+
+  const getStatusStyles = (status: string) => {
+    switch (status.toUpperCase()) {
+      case 'COMPLETED':
+        return { bg: 'bg-green-100', text: 'text-green-600' }
+      case 'PENDING':
+        return { bg: 'bg-yellow-100', text: 'text-yellow-600' }
+      case 'CONFIRMED':
+        return { bg: 'bg-blue-100', text: 'text-blue-600' }
+      case 'CANCELLED':
+        return { bg: 'bg-red-100', text: 'text-red-600' }
+      default:
+        return { bg: 'bg-gray-100', text: 'text-gray-600' }
+    }
+  }
   return (
     <div className='flex'>
       {/* Sidebar Component */}
@@ -29,8 +98,14 @@ export default function CustomerDashboard() {
             </div>
             <p className='text-gray-600'>View and manage your service appointments</p>
             <div className='mt-4'>
-              <span className='text-2xl font-bold text-blue-600'>5</span>
-              <span className='text-gray-500 ml-2'>Upcoming</span>
+              {loading ? (
+                <span className='text-gray-500'>Loading...</span>
+              ) : (
+                <>
+                  <span className='text-2xl font-bold text-blue-600'>{upcomingAppointments}</span>
+                  <span className='text-gray-500 ml-2'>Upcoming</span>
+                </>
+              )}
             </div>
           </div>
 
@@ -79,8 +154,14 @@ export default function CustomerDashboard() {
             </div>
             <p className='text-gray-600'>View your past service records</p>
             <div className='mt-4'>
-              <span className='text-2xl font-bold text-orange-600'>23</span>
-              <span className='text-gray-500 ml-2'>Completed</span>
+              {loading ? (
+                <span className='text-gray-500'>Loading...</span>
+              ) : (
+                <>
+                  <span className='text-2xl font-bold text-orange-600'>{completedAppointments}</span>
+                  <span className='text-gray-500 ml-2'>Completed</span>
+                </>
+              )}
             </div>
           </div>
 
@@ -122,50 +203,53 @@ export default function CustomerDashboard() {
         <div className='mt-8 bg-white p-6 rounded-lg shadow-md'>
           <h2 className='text-2xl font-bold text-gray-800 mb-4'>Recent Activity</h2>
           <div className='space-y-4'>
-            <div className='flex items-center justify-between border-b pb-3'>
-              <div className='flex items-center gap-4'>
-                <div className='bg-blue-100 p-2 rounded-full'>
-                  <svg className='w-5 h-5 text-blue-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M5 13l4 4L19 7' />
-                  </svg>
-                </div>
-                <div>
-                  <p className='font-semibold text-gray-800'>Oil Change Service Completed</p>
-                  <p className='text-sm text-gray-500'>2 days ago</p>
-                </div>
+            {loading ? (
+              <div className='flex items-center justify-center py-8'>
+                <div className='text-gray-500'>Loading recent activities...</div>
               </div>
-              <span className='text-green-600 font-semibold'>Completed</span>
-            </div>
-
-            <div className='flex items-center justify-between border-b pb-3'>
-              <div className='flex items-center gap-4'>
-                <div className='bg-yellow-100 p-2 rounded-full'>
-                  <svg className='w-5 h-5 text-yellow-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' />
-                  </svg>
-                </div>
-                <div>
-                  <p className='font-semibold text-gray-800'>Brake Inspection Scheduled</p>
-                  <p className='text-sm text-gray-500'>Tomorrow at 10:00 AM</p>
-                </div>
+            ) : error ? (
+              <div className='flex items-center justify-center py-8'>
+                <div className='text-red-500'>{error}</div>
               </div>
-              <span className='text-yellow-600 font-semibold'>Pending</span>
-            </div>
-
-            <div className='flex items-center justify-between'>
-              <div className='flex items-center gap-4'>
-                <div className='bg-purple-100 p-2 rounded-full'>
-                  <svg className='w-5 h-5 text-purple-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' />
-                  </svg>
-                </div>
-                <div>
-                  <p className='font-semibold text-gray-800'>New Invoice Generated</p>
-                  <p className='text-sm text-gray-500'>1 week ago</p>
-                </div>
+            ) : recentAppointments.length === 0 ? (
+              <div className='flex items-center justify-center py-8'>
+                <div className='text-gray-500'>No recent appointments found</div>
               </div>
-              <span className='text-blue-600 font-semibold'>View</span>
-            </div>
+            ) : (
+              recentAppointments.map((appointment, index) => {
+                const appointmentDate = new Date(appointment.appointmentDate)
+                const isUpcoming = appointmentDate > new Date()
+                const timeAgo = getTimeAgo(appointmentDate)
+                
+                return (
+                  <div key={appointment.id} className={`flex items-center justify-between ${index < recentAppointments.length - 1 ? 'border-b pb-3' : ''}`}>
+                    <div className='flex items-center gap-4'>
+                      <div className={`p-2 rounded-full ${getStatusStyles(appointment.status).bg}`}>
+                        <svg className={`w-5 h-5 ${getStatusStyles(appointment.status).text}`} fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                          {appointment.status === 'COMPLETED' ? (
+                            <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M5 13l4 4L19 7' />
+                          ) : appointment.status === 'PENDING' ? (
+                            <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' />
+                          ) : (
+                            <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' />
+                          )}
+                        </svg>
+                      </div>
+                      <div>
+                        <p className='font-semibold text-gray-800'>{appointment.serviceType}</p>
+                        <p className='text-sm text-gray-500'>
+                          {isUpcoming ? `${timeAgo} at ${appointment.timeSlot}` : timeAgo}
+                        </p>
+                        <p className='text-xs text-gray-400'>{appointment.vehicleBrand} {appointment.model}</p>
+                      </div>
+                    </div>
+                    <span className={`font-semibold ${getStatusStyles(appointment.status).text}`}>
+                      {appointment.status.charAt(0) + appointment.status.slice(1).toLowerCase()}
+                    </span>
+                  </div>
+                )
+              })
+            )}
           </div>
         </div>
       </div>

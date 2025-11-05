@@ -1,6 +1,7 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
+import Navbar from '../components/Navbar'
 import { TextField, InputAdornment, IconButton, Tooltip, Tabs, Tab, Box, Chip, Checkbox } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -11,6 +12,8 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 interface Appointment {
   id: number;
@@ -26,7 +29,20 @@ interface Appointment {
   appointmentTime: string;
   status: 'pending' | 'approved' | 'completed';
   assignedEmployee?: string;
+  assignedEmployeeId?: number;
   notes?: string;
+}
+
+interface Employee {
+  id: number;
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  position: string;
+  department: string;
+  isActive: boolean;
 }
 
 const AppointmentsPage = () => {
@@ -35,9 +51,11 @@ const AppointmentsPage = () => {
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loadingEmployees, setLoadingEmployees] = useState(false);
 
   // Sample appointments data
-  const [appointments] = useState<Appointment[]>([
+  const [appointments, setAppointments] = useState<Appointment[]>([
     {
       id: 1,
       customerName: 'John Doe',
@@ -85,12 +103,99 @@ const AppointmentsPage = () => {
     },
   ]);
 
-  // Sample employees for assignment
-  const [employees] = useState([
-    { id: 1, name: 'Mike Johnson' },
-    { id: 2, name: 'Sarah Williams' },
-    { id: 3, name: 'Tom Anderson' },
-  ]);
+  // Fetch employees from backend
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+
+  const fetchEmployees = async () => {
+    setLoadingEmployees(true);
+    try {
+      const userData = localStorage.getItem('user');
+      
+      if (!userData) {
+        console.error('No user data found');
+        // Use mock data as fallback
+        setEmployees([
+          { 
+            id: 1, 
+            username: 'mikej', 
+            email: 'mike@example.com',
+            firstName: 'Mike', 
+            lastName: 'Johnson',
+            phoneNumber: '123-456-7890',
+            position: 'Technician',
+            department: 'Service',
+            isActive: true
+          },
+          { 
+            id: 2, 
+            username: 'sarahw', 
+            email: 'sarah@example.com',
+            firstName: 'Sarah', 
+            lastName: 'Williams',
+            phoneNumber: '098-765-4321',
+            position: 'Senior Technician',
+            department: 'Service',
+            isActive: true
+          },
+        ] as Employee[]);
+        setLoadingEmployees(false);
+        return;
+      }
+
+      const user = JSON.parse(userData);
+      const response = await fetch(`${API_URL}/api/admin/employees`, {
+        headers: {
+          'Authorization': `Bearer ${user.token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Fetched employees:', data);
+        // Filter only active employees
+        const activeEmployees = data.filter((emp: Employee) => emp.isActive);
+        setEmployees(activeEmployees);
+      } else {
+        const errorText = await response.text();
+        console.error('Failed to fetch employees. Status:', response.status, 'Error:', errorText);
+        // Use mock data as fallback
+        setEmployees([
+          { 
+            id: 1, 
+            username: 'mikej', 
+            email: 'mike@example.com',
+            firstName: 'Mike', 
+            lastName: 'Johnson',
+            phoneNumber: '123-456-7890',
+            position: 'Technician',
+            department: 'Service',
+            isActive: true
+          },
+        ] as Employee[]);
+      }
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+      // Use mock data as fallback
+      setEmployees([
+        { 
+          id: 1, 
+          username: 'mikej', 
+          email: 'mike@example.com',
+          firstName: 'Mike', 
+          lastName: 'Johnson',
+          phoneNumber: '123-456-7890',
+          position: 'Technician',
+          department: 'Service',
+          isActive: true
+        },
+      ] as Employee[]);
+    } finally {
+      setLoadingEmployees(false);
+    }
+  };
 
   // Filter appointments by status and search
   const filterAppointments = (status: 'pending' | 'approved' | 'completed') => {
@@ -182,6 +287,31 @@ const AppointmentsPage = () => {
     const appointment = appointments.find(apt => apt.id === appointmentId);
     setSelectedAppointment(appointment || null);
     setIsAssignModalOpen(true);
+    // Refresh employee list when opening modal to get latest employees
+    fetchEmployees();
+  };
+
+  const assignEmployeeToAppointment = (employeeId: number, employeeName: string) => {
+    if (!selectedAppointment) return;
+
+    // Update the appointments array with the assigned employee
+    setAppointments(prevAppointments =>
+      prevAppointments.map(apt =>
+        apt.id === selectedAppointment.id
+          ? {
+              ...apt,
+              assignedEmployee: employeeName,
+              assignedEmployeeId: employeeId,
+            }
+          : apt
+      )
+    );
+
+    // Close the modal
+    setIsAssignModalOpen(false);
+    
+    // Show success message (optional)
+    console.log(`Successfully assigned ${employeeName} to appointment #${selectedAppointment.id}`);
   };
 
   const handleViewDetails = (appointment: Appointment) => {
@@ -202,9 +332,11 @@ const AppointmentsPage = () => {
     <div className='flex h-screen overflow-hidden'>
       <Sidebar activeItem="Appointments" />
 
-      <div className='w-5/6 p-8 bg-gray-50 relative overflow-y-auto'>
-        <div className='flex justify-between items-center mb-6'>
-          <h1 className='text-3xl font-bold text-gray-800'>Appointment Management</h1>
+      <div className='flex-1 flex flex-col'>
+        <Navbar />
+        <div className='flex-1 p-8 bg-gray-50 relative overflow-y-auto'>
+          <div className='flex justify-between items-center mb-6'>
+            <h1 className='text-3xl font-bold text-blue-800'>Appointment Management</h1>
           <div className='flex gap-4'>
             <div className='bg-white px-4 py-2 rounded-lg shadow-md'>
               <span className='text-sm text-gray-600'>Pending: </span>
@@ -269,7 +401,7 @@ const AppointmentsPage = () => {
             <Tooltip title={selectedRows.length > 0 ? `Export ${selectedRows.length} selected rows to CSV` : 'Export all filtered data to CSV'}>
               <button
                 onClick={handleExportCSV}
-                className='bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors shadow-md flex items-center gap-2 whitespace-nowrap'
+                className='bg-green-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-600 transition-colors shadow-md flex items-center gap-2 whitespace-nowrap'
               >
                 <FileDownloadIcon />
                 Export to CSV
@@ -288,11 +420,21 @@ const AppointmentsPage = () => {
           <Tabs 
             value={tabValue} 
             onChange={(e, newValue) => setTabValue(newValue)}
+            TabIndicatorProps={{
+              style: {
+                backgroundColor: tabValue === 0 ? '#f97316' : tabValue === 1 ? '#3b82f6' : '#22c55e',
+                height: '3px',
+              },
+            }}
             sx={{
               '& .MuiTab-root': {
                 textTransform: 'none',
                 fontWeight: 600,
                 fontSize: '16px',
+                color: '#000000',
+                '&.Mui-selected': {
+                  color: tabValue === 0 ? '#f97316' : tabValue === 1 ? '#3b82f6' : '#22c55e',
+                },
               },
             }}
           >
@@ -307,7 +449,7 @@ const AppointmentsPage = () => {
         {tabValue === 0 && (
           <div className='bg-white rounded-b-lg shadow-md overflow-hidden'>
             <table className='w-full'>
-              <thead className='bg-indigo-700 text-white'>
+              <thead className='bg-gray-800 text-white'>
                 <tr>
                   <th className='px-4 py-4 text-left'>
                     <Checkbox
@@ -325,25 +467,25 @@ const AppointmentsPage = () => {
                       }}
                     />
                   </th>
-                  <th className='px-4 py-4 text-left'>ID</th>
-                  <th className='px-4 py-4 text-left'>Customer</th>
-                  <th className='px-4 py-4 text-left'>Contact</th>
-                  <th className='px-4 py-4 text-left'>Vehicle</th>
-                  <th className='px-4 py-4 text-left'>Service</th>
-                  <th className='px-4 py-4 text-left'>Date & Time</th>
-                  <th className='px-4 py-4 text-center'>Actions</th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>ID</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Customer</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Contact</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Vehicle</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Service</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Date & Time</p></th>
+                  <th className='px-4 py-4 text-center'><p className='text-white'>Actions</p></th>
                 </tr>
               </thead>
               <tbody>
                 {pendingAppointments.map((apt, index) => (
-                  <tr key={apt.id} className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-indigo-50 transition-colors`}>
+                  <tr key={apt.id} className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-gray-100 transition-colors`}>
                     <td className='px-4 py-4'>
                       <Checkbox
                         checked={selectedRows.includes(apt.id)}
                         onChange={() => handleSelectRow(apt.id)}
                         onClick={(e) => e.stopPropagation()}
                         sx={{
-                          color: '#6E8CFB',
+                          color: '#000000',
                           '&.Mui-checked': {
                             color: '#f97316',
                           },
@@ -353,17 +495,17 @@ const AppointmentsPage = () => {
                     <td className='px-4 py-4 font-medium text-gray-900'>{apt.id}</td>
                     <td className='px-4 py-4'>
                       <div className='font-semibold text-gray-900'>{apt.customerName}</div>
-                      <div className='text-sm text-gray-600'>{apt.customerEmail}</div>
+                      <div className='text-sm text-gray-900'>{apt.customerEmail}</div>
                     </td>
-                    <td className='px-4 py-4 text-gray-700 font-medium'>{apt.customerPhone}</td>
+                    <td className='px-4 py-4 text-gray-900 font-medium'>{apt.customerPhone}</td>
                     <td className='px-4 py-4'>
                       <div className='font-semibold text-gray-900'>{apt.vehicleMake} {apt.vehicleModel}</div>
-                      <div className='text-sm text-gray-600'>{apt.vehicleYear} - {apt.vehiclePlate}</div>
+                      <div className='text-sm text-gray-900'>{apt.vehicleYear} - {apt.vehiclePlate}</div>
                     </td>
-                    <td className='px-4 py-4 text-gray-700 font-medium'>{apt.serviceType}</td>
+                    <td className='px-4 py-4 text-gray-900 font-medium'>{apt.serviceType}</td>
                     <td className='px-4 py-4'>
                       <div className='font-medium text-gray-900'>{apt.appointmentDate}</div>
-                      <div className='text-sm text-gray-600'>{apt.appointmentTime}</div>
+                      <div className='text-sm text-gray-900'>{apt.appointmentTime}</div>
                     </td>
                     <td className='px-4 py-4'>
                       <div className='flex gap-2 justify-center'>
@@ -414,7 +556,7 @@ const AppointmentsPage = () => {
         {tabValue === 1 && (
           <div className='bg-white rounded-b-lg shadow-md overflow-hidden'>
             <table className='w-full'>
-              <thead className='bg-indigo-700 text-white'>
+              <thead className='bg-gray-800 text-white'>
                 <tr>
                   <th className='px-4 py-4 text-left'>
                     <Checkbox
@@ -432,26 +574,26 @@ const AppointmentsPage = () => {
                       }}
                     />
                   </th>
-                  <th className='px-4 py-4 text-left'>ID</th>
-                  <th className='px-4 py-4 text-left'>Customer</th>
-                  <th className='px-4 py-4 text-left'>Contact</th>
-                  <th className='px-4 py-4 text-left'>Vehicle</th>
-                  <th className='px-4 py-4 text-left'>Service</th>
-                  <th className='px-4 py-4 text-left'>Date & Time</th>
-                  <th className='px-4 py-4 text-left'>Assigned To</th>
-                  <th className='px-4 py-4 text-center'>Actions</th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>ID</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Customer</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Contact</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Vehicle</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Service</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Date & Time</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Assigned To</p></th>
+                  <th className='px-4 py-4 text-center'><p className='text-white'>Actions</p></th>
                 </tr>
               </thead>
               <tbody>
                 {approvedAppointments.map((apt, index) => (
-                  <tr key={apt.id} className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-yellow-50 transition-colors`}>
+                  <tr key={apt.id} className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-gray-100 transition-colors`}>
                     <td className='px-4 py-4'>
                       <Checkbox
                         checked={selectedRows.includes(apt.id)}
                         onChange={() => handleSelectRow(apt.id)}
                         onClick={(e) => e.stopPropagation()}
                         sx={{
-                          color: '#FAB12F',
+                          color: '#000000',
                           '&.Mui-checked': {
                             color: '#16a34a',
                           },
@@ -461,17 +603,17 @@ const AppointmentsPage = () => {
                     <td className='px-4 py-4 font-medium text-gray-900'>{apt.id}</td>
                     <td className='px-4 py-4'>
                       <div className='font-semibold text-gray-900'>{apt.customerName}</div>
-                      <div className='text-sm text-gray-600'>{apt.customerEmail}</div>
+                      <div className='text-sm text-gray-900'>{apt.customerEmail}</div>
                     </td>
-                    <td className='px-4 py-4 text-gray-700 font-medium'>{apt.customerPhone}</td>
+                    <td className='px-4 py-4 text-gray-000 font-medium'>{apt.customerPhone}</td>
                     <td className='px-4 py-4'>
                       <div className='font-semibold text-gray-900'>{apt.vehicleMake} {apt.vehicleModel}</div>
                       <div className='text-sm text-gray-600'>{apt.vehicleYear} - {apt.vehiclePlate}</div>
                     </td>
-                    <td className='px-4 py-4 text-gray-700 font-medium'>{apt.serviceType}</td>
+                    <td className='px-4 py-4 text-gray-900 font-medium'>{apt.serviceType}</td>
                     <td className='px-4 py-4'>
                       <div className='font-medium text-gray-900'>{apt.appointmentDate}</div>
-                      <div className='text-sm text-gray-600'>{apt.appointmentTime}</div>
+                      <div className='text-sm text-gray-900'>{apt.appointmentTime}</div>
                     </td>
                     <td className='px-4 py-4'>
                       {apt.assignedEmployee ? (
@@ -520,7 +662,7 @@ const AppointmentsPage = () => {
         {tabValue === 2 && (
           <div className='bg-white rounded-b-lg shadow-md overflow-hidden'>
             <table className='w-full'>
-              <thead className='bg-indigo-700 text-white'>
+              <thead className='bg-gray-800 text-white'>
                 <tr>
                   <th className='px-4 py-4 text-left'>
                     <Checkbox
@@ -538,26 +680,26 @@ const AppointmentsPage = () => {
                       }}
                     />
                   </th>
-                  <th className='px-4 py-4 text-left'>ID</th>
-                  <th className='px-4 py-4 text-left'>Customer</th>
-                  <th className='px-4 py-4 text-left'>Contact</th>
-                  <th className='px-4 py-4 text-left'>Vehicle</th>
-                  <th className='px-4 py-4 text-left'>Service</th>
-                  <th className='px-4 py-4 text-left'>Date & Time</th>
-                  <th className='px-4 py-4 text-left'>Handled By</th>
-                  <th className='px-4 py-4 text-center'>Actions</th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>ID</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Customer</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Contact</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Vehicle</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Service</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Date & Time</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Handled By</p></th>
+                  <th className='px-4 py-4 text-center'><p className='text-white'>Actions</p></th>
                 </tr>
               </thead>
               <tbody>
                 {completedAppointments.map((apt, index) => (
-                  <tr key={apt.id} className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-green-50 transition-colors`}>
+                  <tr key={apt.id} className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-gray-100 transition-colors`}>
                     <td className='px-4 py-4'>
                       <Checkbox
                         checked={selectedRows.includes(apt.id)}
                         onChange={() => handleSelectRow(apt.id)}
                         onClick={(e) => e.stopPropagation()}
                         sx={{
-                          color: '#78C841',
+                          color: '#000000',
                           '&.Mui-checked': {
                             color: '#2563eb',
                           },
@@ -628,21 +770,32 @@ const AppointmentsPage = () => {
                 </div>
 
                 <div className='space-y-3'>
-                  {employees.map(emp => (
-                    <button
-                      key={emp.id}
-                      className='w-full p-4 text-left border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all'
-                      onClick={() => {
-                        console.log('Assigned to:', emp.name);
-                        setIsAssignModalOpen(false);
-                      }}
-                    >
-                      <div className='flex items-center gap-3'>
-                        <AssignmentIndIcon className='text-indigo-600' />
-                        <span className='font-semibold text-gray-900'>{emp.name}</span>
-                      </div>
-                    </button>
-                  ))}
+                  {loadingEmployees ? (
+                    <div className='text-center py-4 text-gray-600'>Loading employees...</div>
+                  ) : employees.length === 0 ? (
+                    <div className='text-center py-4 text-gray-600'>No active employees available</div>
+                  ) : (
+                    employees.map(emp => (
+                      <button
+                        key={emp.id}
+                        className='w-full p-4 text-left border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all'
+                        onClick={() => {
+                          const employeeName = `${emp.firstName} ${emp.lastName}`;
+                          assignEmployeeToAppointment(emp.id, employeeName);
+                        }}
+                      >
+                        <div className='flex items-center gap-3'>
+                          <AssignmentIndIcon className='text-indigo-600' />
+                          <div className='flex-1'>
+                            <span className='font-semibold text-gray-900'>{emp.firstName} {emp.lastName}</span>
+                            <div className='text-xs text-gray-500 mt-1'>
+                              {emp.position} - {emp.department}
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    ))
+                  )}
                 </div>
 
                 <button
@@ -655,6 +808,7 @@ const AppointmentsPage = () => {
             </div>
           </>
         )}
+        </div>
       </div>
     </div>
   )

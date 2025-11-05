@@ -29,7 +29,7 @@ const Sidebar = ({ activeItem = '' }: SidebarProps) => {
             <GrDashboard className='mr-2 text-2xl' />Dashboard
           </li>
           <li 
-            onClick={() => router.push('/customer/My Appointments')}
+            onClick={() => router.push('/customer/my-appointments')}
             className={`cursor-pointer flex text-lg p-2 rounded-l-2xl ${activeItem === 'My Appointments' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
           >
             <AiOutlineFileText className='mr-2 text-2xl' />My Appointments

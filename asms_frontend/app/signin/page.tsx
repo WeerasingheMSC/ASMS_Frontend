@@ -39,8 +39,45 @@ const page = () => {
         const result = await response.json();
         // Store user info in localStorage
         localStorage.setItem('user', JSON.stringify(result));
-        // Redirect to dashboard
-        window.location.href = '/Admin';
+
+        // determine redirect path from returned user/roles
+        const determineRedirect = (user: any) => {
+          const roles: string[] = [];
+          if (!user) return '/Admin';
+          // single role string
+          if (typeof user.role === 'string' && user.role) roles.push(user.role);
+          // roles as array (strings or objects)
+          if (Array.isArray(user.roles)) {
+            user.roles.forEach((r: any) => {
+              if (!r) return;
+              if (typeof r === 'string') roles.push(r);
+              else if (r.authority) roles.push(r.authority);
+              else if (r.name) roles.push(r.name);
+            });
+          }
+          // authorities array (common in some backends)
+          if (Array.isArray(user.authorities)) {
+            user.authorities.forEach((a: any) => {
+              if (!a) return;
+              if (typeof a === 'string') roles.push(a);
+              else if (a.authority) roles.push(a.authority);
+              else if (a.name) roles.push(a.name);
+            });
+          }
+          // other possible fields
+          if (user.type) roles.push(String(user.type));
+          if (user.userType) roles.push(String(user.userType));
+
+          const normalized = roles.map(r => String(r).toUpperCase());
+          if (normalized.some(r => r.includes('ADMIN'))) return '/Admin';
+          if (normalized.some(r => r.includes('MECHANIC') || r.includes('EMPLOYEE') || r.includes('STAFF'))) return '/employee';
+          if (normalized.some(r => r.includes('CUSTOMER') || r.includes('USER'))) return '/customer';
+
+          // fallback - keep previous behavior
+          return '/Admin';
+        };
+
+        window.location.href = determineRedirect(result);
       } else {
         const errorResult = await response.json().catch(() => ({ message: 'Unknown error occurred' }));
         alert(errorResult.message || 'Login failed');

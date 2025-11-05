@@ -21,35 +21,53 @@ const page = () => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      const response = await fetch(`${API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: formData.username,
-          password: formData.password
-        }),
-      });
+  e.preventDefault();
 
-      if (response.ok) {
-        const result = await response.json();
-        // Store user info in localStorage
-        localStorage.setItem('user', JSON.stringify(result));
-        // Redirect to dashboard
-        window.location.href = '/Admin';
-      } else {
-        const errorResult = await response.json().catch(() => ({ message: 'Unknown error occurred' }));
-        alert(errorResult.message || 'Login failed');
-      }
-    } catch (error) {
-      console.error('Error during sign in:', error);
-      alert('Network error. Please check if the backend is running.');
+  try {
+    const response = await fetch(`${API_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: formData.username,
+        password: formData.password
+      }),
+    });
+
+    if (!response.ok) {
+      const errorResult = await response.json().catch(() => ({ message: 'Unknown error occurred' }));
+      alert(errorResult.message || 'Login failed');
+      return;
     }
-  };
+
+    const result = await response.json();
+
+    // Save user to localStorage
+    localStorage.setItem('user', JSON.stringify(result));
+
+    // Redirect based on role
+    switch (result.role) {
+      case "ADMIN":
+        window.location.href = "/Admin";
+        break;
+      case "CUSTOMER":
+        window.location.href = "/customer";
+        break;
+      case "EMPLOYEE":
+        window.location.href = "/employee";
+        break;
+      default:
+        alert("Invalid role. Contact system admin.");
+        break;
+    }
+
+  } catch (error) {
+    console.error('Error during sign in:', error);
+    alert('Network error. Please check if the backend is running.');
+  }
+};
+
 
   const [showpassword, setShowPassword] = useState(false);
 

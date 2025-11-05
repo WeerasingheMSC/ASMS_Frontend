@@ -99,6 +99,150 @@ export default function MyAppointments() {
             </div>
           </div>
 
+          {/* Statistics Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <Card className="p-4">
+              <div className="text-center">
+                <p className="text-gray-500 text-sm mb-1">Total</p>
+                {loading ? (
+                  <div className="animate-pulse">
+                    <div className="h-8 bg-gray-200 rounded mb-1"></div>
+                  </div>
+                ) : (
+                  <p className="text-3xl font-bold text-gray-800">{appointments.length}</p>
+                )}
+              </div>
+            </Card>
+
+            <Card className="p-4">
+              <div className="text-center">
+                <p className="text-gray-500 text-sm mb-1">Upcoming</p>
+                {loading ? (
+                  <div className="animate-pulse">
+                    <div className="h-8 bg-gray-200 rounded mb-1"></div>
+                  </div>
+                ) : (
+                  <p className="text-3xl font-bold text-yellow-600">
+                    {appointments.filter((a) => ["PENDING", "CONFIRMED"].includes(a.status)).length}
+                  </p>
+                )}
+              </div>
+            </Card>
+
+            <Card className="p-4">
+              <div className="text-center">
+                <p className="text-gray-500 text-sm mb-1">In Progress</p>
+                {loading ? (
+                  <div className="animate-pulse">
+                    <div className="h-8 bg-gray-200 rounded mb-1"></div>
+                  </div>
+                ) : (
+                  <p className="text-3xl font-bold text-purple-600">
+                    {appointments.filter((a) => a.status === "IN_SERVICE").length}
+                  </p>
+                )}
+              </div>
+            </Card>
+
+            <Card className="p-4">
+              <div className="text-center">
+                <p className="text-gray-500 text-sm mb-1">Completed</p>
+                {loading ? (
+                  <div className="animate-pulse">
+                    <div className="h-8 bg-gray-200 rounded mb-1"></div>
+                  </div>
+                ) : (
+                  <p className="text-3xl font-bold text-green-600">
+                    {appointments.filter((a) => a.status === "COMPLETED").length}
+                  </p>
+                )}
+              </div>
+            </Card>
+          </div>
+
+          {/* Filter by Status */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">Filter by Status</h3>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={() => setFilterStatus(null)}
+                className={`${
+                  filterStatus === null
+                    ? "bg-blue-600 text-white"
+                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                All ({appointments.length})
+              </Button>
+              
+              <Button
+                onClick={() => setFilterStatus("PENDING")}
+                className={`${
+                  filterStatus === "PENDING"
+                    ? "bg-blue-600 text-white"
+                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                Pending ({appointments.filter(a => a.status === "PENDING").length})
+              </Button>
+
+              <Button
+                onClick={() => setFilterStatus("CONFIRMED")}
+                className={`${
+                  filterStatus === "CONFIRMED"
+                    ? "bg-blue-600 text-white"
+                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                Confirmed ({appointments.filter(a => a.status === "CONFIRMED").length})
+              </Button>
+
+              <Button
+                onClick={() => setFilterStatus("IN_SERVICE")}
+                className={`${
+                  filterStatus === "IN_SERVICE"
+                    ? "bg-blue-600 text-white"
+                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                In Service ({appointments.filter(a => a.status === "IN_SERVICE").length})
+              </Button>
+
+              <Button
+                onClick={() => setFilterStatus("READY")}
+                className={`${
+                  filterStatus === "READY"
+                    ? "bg-blue-600 text-white"
+                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                Ready ({appointments.filter(a => a.status === "READY").length})
+              </Button>
+
+              <Button
+                onClick={() => setFilterStatus("COMPLETED")}
+                className={`${
+                  filterStatus === "COMPLETED"
+                    ? "bg-blue-600 text-white"
+                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                Completed ({appointments.filter(a => a.status === "COMPLETED").length})
+              </Button>
+
+              <Button
+                onClick={() => setFilterStatus("CANCELLED")}
+                className={`${
+                  filterStatus === "CANCELLED"
+                    ? "bg-blue-600 text-white"
+                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                Cancelled ({appointments.filter(a => a.status === "CANCELLED").length})
+              </Button>
+            </div>
+          </div>
+
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
               <p className="text-red-700">{error}</p>

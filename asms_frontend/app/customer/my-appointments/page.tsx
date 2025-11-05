@@ -8,7 +8,6 @@ import { Plus, Search, Filter } from "lucide-react"
 import AppointmentCard from "../components/appointment-card"
 import BookingWizard from "../components/booking-wizard"
 
-
 const MOCK_APPOINTMENTS = [
   {
     id: "1",
@@ -26,7 +25,6 @@ const MOCK_APPOINTMENTS = [
     time: "10:00 AM",
     status: "completed",
     notes: "",
-    review: null,
   },
   {
     id: "2",
@@ -42,9 +40,8 @@ const MOCK_APPOINTMENTS = [
     serviceType: "Brake Inspection",
     date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
     time: "02:00 PM",
-    status: "confirmed",
+    status: "confirmed", // Changed to completed to test review functionality
     notes: "Bring original documents",
-    review: null,
   },
   {
     id: "3",
@@ -62,7 +59,6 @@ const MOCK_APPOINTMENTS = [
     time: "11:30 AM",
     status: "pending",
     notes: "",
-    review: null,
   },
   {
     id: "4",
@@ -78,9 +74,8 @@ const MOCK_APPOINTMENTS = [
     serviceType: "Battery Replacement",
     date: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
     time: "03:00 PM",
-    status: "ready-for-pickup",
+    status: "completed",
     notes: "",
-    review: null,
   },
   {
     id: "5",
@@ -98,16 +93,114 @@ const MOCK_APPOINTMENTS = [
     time: "09:00 AM",
     status: "cancelled",
     notes: "",
-    review: null,
   },
 ]
+// const MOCK_APPOINTMENTS = [
+//   {
+//     id: "1",
+//     vehicleInfo: {
+//       type: "Sedan",
+//       brand: "Toyota",
+//       model: "Camry",
+//       year: 2022,
+//       registrationNumber: "ABC-1234",
+//       fuelType: "Petrol",
+//     },
+//     serviceCategory: "Maintenance",
+//     serviceType: "Oil Change",
+//     date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+//     time: "10:00 AM",
+//     status: "completed",
+//     notes: "",
+//      review: {
+//     rating: 4,
+//     comment: "Good service, quick turnaround!"
+//   },
+//   },
+//   {
+//     id: "2",
+//     vehicleInfo: {
+//       type: "SUV",
+//       brand: "Honda",
+//       model: "CR-V",
+//       year: 2021,
+//       registrationNumber: "XYZ-5678",
+//       fuelType: "Diesel",
+//     },
+//     serviceCategory: "Repair",
+//     serviceType: "Brake Inspection",
+//     date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+//     time: "02:00 PM",
+//     status: "confirmed",
+//     notes: "Bring original documents",
+//     review: null,
+//   },
+//   {
+//     id: "3",
+//     vehicleInfo: {
+//       type: "Sedan",
+//       brand: "Maruti",
+//       model: "Swift",
+//       year: 2023,
+//       registrationNumber: "DEF-9012",
+//       fuelType: "Petrol",
+//     },
+//     serviceCategory: "Maintenance",
+//     serviceType: "General Service",
+//     date: new Date().toISOString(),
+//     time: "11:30 AM",
+//     status: "pending",
+//     notes: "",
+//     review: null,
+//   },
+//   {
+//     id: "4",
+//     vehicleInfo: {
+//       type: "Sedan",
+//       brand: "Hyundai",
+//       model: "Creta",
+//       year: 2020,
+//       registrationNumber: "GHI-3456",
+//       fuelType: "Petrol",
+//     },
+//     serviceCategory: "Repair",
+//     serviceType: "Battery Replacement",
+//     date: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
+//     time: "03:00 PM",
+//     status: "ready-for-pickup",
+//     notes: "",
+//     review: null,
+//   },
+//   {
+//     id: "5",
+//     vehicleInfo: {
+//       type: "SUV",
+//       brand: "Mahindra",
+//       model: "XUV500",
+//       year: 2019,
+//       registrationNumber: "JKL-7890",
+//       fuelType: "Diesel",
+//     },
+//     serviceCategory: "Maintenance",
+//     serviceType: "Oil Change",
+//     date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+//     time: "09:00 AM",
+//     status: "cancelled",
+//     notes: "",
+//     review: null,
+//   },
+// ]
 
 
 
 export default function CustomerPage() {
   const [appointments, setAppointments] = useState(MOCK_APPOINTMENTS)
   const [filterStatus, setFilterStatus] = useState<string | null>(null)
-  const [reviews, setReviews] = useState<Record<string, string>>({})
+//   const [reviews, setReviews] = useState<Record<string, string>>({})
+  // Initialize with hardcoded reviews for testing
+  const [reviews, setReviews] = useState<Record<string, string>>({
+    "1": "4 - Great service! The oil change was done quickly and professionally.",
+  })
   const [loading, setLoading] = useState(false)
   const [showWizard, setShowWizard] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -166,6 +259,7 @@ export default function CustomerPage() {
   const handleReviewSubmit = (appointmentId: string, rating: string, comment: string) => {
     const submitReview = async () => {
       try {
+              console.log("🔄 Submitting review to backend...", { appointmentId, rating, comment })
         const response = await fetch("/api/reviews", {
           method: "POST",
           headers: {
@@ -184,12 +278,86 @@ export default function CustomerPage() {
             [appointmentId]: `${rating} - ${comment}`,
           }))
         }
+        alert("✅ Review submitted successfully!")
       } catch (error) {
-        console.error("Error submitting review:", error)
+            console.error("Error submitting review:", error)
+            alert("❌ Failed to submit review")
       }
     }
 
     submitReview()
+  }
+
+  // Add these functions to CustomerPage
+const handleEditReview = (appointmentId: string, newRating: string, newComment: string) => {
+  const updateReview = async () => {
+    try {
+      const response = await fetch("/api/reviews", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          appointmentId,
+          rating: newRating,
+          comment: newComment,
+        }),
+      })
+
+      if (response.ok) {
+        setReviews((prev) => ({
+          ...prev,
+          [appointmentId]: `${newRating} - ${newComment}`,
+        }))
+        alert("✅ Review updated successfully!")
+      }
+    } catch (error) {
+      console.error("Error updating review:", error)
+      alert("❌ Failed to update review")
+    }
+  }
+
+  updateReview()
+}
+
+const handleDeleteReview = (appointmentId: string) => {
+  const deleteReview = async () => {
+    try {
+         console.log("🔄 Deleting review from backend...", { appointmentId })
+      const response = await fetch(`/api/reviews?appointmentId=${appointmentId}`, {
+        method: "DELETE",
+      })
+
+      if (response.ok) {
+        setReviews((prev) => {
+          const newReviews = { ...prev }
+          delete newReviews[appointmentId]
+          return newReviews
+        })
+        alert("✅ Review deleted successfully!")
+      }
+    } catch (error) {
+      console.error("Error deleting review:", error)
+      alert("❌ Failed to delete review")
+    }
+  }
+
+  deleteReview()
+}
+
+
+  // Test functions for hardcoded testing
+  const addTestReview = () => {
+    setReviews((prev) => ({
+      ...prev,
+      "3": "5 - Test review added for debugging!",
+    }))
+    alert("✅ Test review added!")
+  }
+
+  const clearAllReviews = () => {
+    setReviews({})
+    alert("✅ All reviews cleared!")
   }
 
   return (
@@ -353,14 +521,15 @@ export default function CustomerPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredAppointments.map((appointment) => (
                       <AppointmentCard
-                        key={appointment.id}
-                        appointment={appointment}
-                        hasReview={!!reviews[appointment.id]}
-                        onReviewSubmit={(rating, comment) =>
-                          handleReviewSubmit(appointment.id, rating, comment)
-                        }
-                        onCancel={handleCancelAppointment}
-                      />
+  key={appointment.id}
+  appointment={appointment}
+  hasReview={!!reviews[appointment.id]}
+  reviewContent={reviews[appointment.id]}
+  onReviewSubmit={(rating, comment) => handleReviewSubmit(appointment.id, rating, comment)}
+  onEditReview={(appointmentId, rating, comment) => handleEditReview(appointmentId, rating, comment)}
+  onDeleteReview={(appointmentId) => handleDeleteReview(appointmentId)}
+  onCancel={handleCancelAppointment}
+/>
                     ))}
                   </div>
                 </>

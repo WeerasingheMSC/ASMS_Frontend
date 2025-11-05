@@ -3,13 +3,17 @@
 import { useState } from "react"
 import { Card } from "../components/ui/card"
 import { Button } from "../components/ui/button"
-import { Calendar, Clock, Wrench, Star, Trash2 } from "lucide-react"
+import { Calendar, Clock, Wrench, Star, Trash2, Edit, MoreVertical } from "lucide-react"
+import ReviewModal from "../components/review-modal"
 
 interface AppointmentCardProps {
   appointment: any
   hasReview: boolean
+  reviewContent?: string
   onReviewSubmit: (rating: string, comment: string) => void
-   onCancel: (appointmentId: string) => void
+  onEditReview: (appointmentId: string, rating: string, comment: string) => void
+  onDeleteReview: (appointmentId: string) => void
+  onCancel: (appointmentId: string) => void
 }
 
 const STATUS_CONFIG = {
@@ -21,19 +25,46 @@ const STATUS_CONFIG = {
   cancelled: { badge: "bg-red-100 text-red-800", label: "Cancelled" },
 }
 
-export default function AppointmentCard({ appointment, hasReview, onReviewSubmit,onCancel }: AppointmentCardProps) {
+export default function AppointmentCard({ appointment, hasReview, onReviewSubmit,onCancel,reviewContent, onEditReview, onDeleteReview }: AppointmentCardProps) {
   const [showReviewModal, setShowReviewModal] = useState(false)
+  const [showReviewActions, setShowReviewActions] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
   const config = STATUS_CONFIG[appointment.status as keyof typeof STATUS_CONFIG]
   const appointmentDate = new Date(appointment.date)
   const dateStr = appointmentDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-//   const handleCancel = () => {
-//     // You can call an API here to cancel the appointment
-//     console.log(`Cancelling appointment ${appointment.id}`)
-//     // For demo, we can just set status to cancelled locally
-//     appointment.status = "cancelled"
-//   }
+
+  const handleReviewSubmit = (rating: string, comment: string) => {
+    onReviewSubmit(rating, comment)
+    setShowReviewModal(false)
+  }
+
+  const handleEditReview = (rating: string, comment: string) => {
+    onEditReview(appointment.id, rating, comment)
+    setIsEditing(false)
+    setShowReviewModal(false)
+  }
+
+  const handleDeleteReview = () => {
+    if (window.confirm("Are you sure you want to delete this review?")) {
+      onDeleteReview(appointment.id)
+      setShowReviewActions(false)
+    }
+  }
+
+  // Parse review content to get rating and comment
+  const getReviewDetails = () => {
+    if (!reviewContent) return { rating: 0, comment: "" }
+    const [ratingPart, ...commentParts] = reviewContent.split(" - ")
+    return {
+      rating: parseInt(ratingPart),
+      comment: commentParts.join(" - ")
+    }
+  }
+
+  const reviewDetails = getReviewDetails()
 
   return (
+    <>
     <Card className="hover:shadow-lg transition-shadow overflow-hidden">
       <div className="p-6">
         {/* Header with Status */}
@@ -117,40 +148,120 @@ export default function AppointmentCard({ appointment, hasReview, onReviewSubmit
             </Button>
           )}
 
-          {/* Review Submitted - only if completed and has review */}
           {hasReview && appointment.status === "completed" && (
-            <div className="flex items-center text-green-600 text-sm font-medium bg-green-50 px-3 py-2 rounded-lg border border-green-200">
-              <Star className="w-4 h-4 mr-1 fill-green-600" />
-              Reviewed
-            </div>
-          )}
+  <div className="flex items-center gap-3">
+    <div className="flex items-center text-green-600 text-sm font-medium bg-green-50 px-3 py-2 rounded-lg border border-green-200">
+      <Star className="w-4 h-4 mr-1 fill-green-600" />
+      Reviewed ({reviewDetails.rating}/5)
+    </div>
+
+    {/* Edit Icon */}
+    <button
+      onClick={() => {
+        setIsEditing(true)
+        setShowReviewModal(true)
+      }}
+      className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+      title="Edit Review"
+    >
+      <Edit className="w-4 h-4" />
+    </button>
+
+    {/* Delete Icon */}
+    <button
+      onClick={handleDeleteReview}
+      className="text-red-600 hover:text-red-800 flex items-center gap-1"
+      title="Delete Review"
+    >
+      <Trash2 className="w-4 h-4" />
+    </button>
+  </div>
+)}
+
+
+{/* {hasReview && appointment.status === "completed" && (
+              <div className="relative">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center text-green-600 text-sm font-medium bg-green-50 px-3 py-2 rounded-lg border border-green-200">
+                    <Star className="w-4 h-4 mr-1 fill-green-600" />
+                    Reviewed ({reviewDetails.rating}/5)
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowReviewActions(!showReviewActions)}
+                    className="w-8 h-8 p-0 hover:bg-gray-100"
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </Button>
+                </div>
+                
+                {/* Review Actions Dropdown */}
+                {/* {showReviewActions && (
+                  <div className="absolute right-0 top-12 bg-white rounded-lg shadow-lg border border-gray-200 p-2 min-w-[120px] z-10">
+                    <button
+                      onClick={() => {
+                        setIsEditing(true)
+                        setShowReviewModal(true)
+                        setShowReviewActions(false)
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-md flex items-center"
+                    >
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit
+                    </button>
+                    <button
+                      onClick={handleDeleteReview}
+                      className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md flex items-center"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+            )} */} 
+          </div>
         </div>
-      </div>
 
-        {/* Cancel Button - only if pending */}
-        {/* {appointment.status === "pending" && (
-          <Button
-            onClick={() => onCancel(appointment.id)}
-            variant="destructive"
-            className="w-full mb-3 bg-red-600 hover:bg-red-700 text-white"
-          >
-            <div className="w-4 h-4 mr-2" />
-            Cancel Appointment
-          </Button>
-        )} */}
+        
+        {/* {showReviewModal && (
+  <ReviewModal
+    appointmentId={appointment.id}
+    onSubmit={(rating, comment) => {
+      onReviewSubmit(rating, comment)   // call parent function
+      setShowReviewModal(false)         // close modal
+    }}
+    onClose={() => setShowReviewModal(false)} // close on cancel
+  />
+)} */}
 
-
-        {/* Review Button */}
-        {/* {appointment.status === "completed" && !hasReview && (
-          <Button onClick={() => setShowReviewModal(true)} variant="outline" className="w-full bg-white border-gray-400 text-gray-500 hover:bg-gray-50">
-            <Star className="w-4 h-4 mr-2" />
-            Leave Review
-          </Button>
-        )}
-        {hasReview && appointment.status === "completed" && (
-          <div className="p-3 bg-green-50 rounded text-sm text-green-800">✓ Review submitted</div>
-        )}
-      </div> */}
     </Card>
+
+
+      {/* Review Modal */}
+      {showReviewModal && (
+        <ReviewModal
+          appointmentId={appointment.id}
+          initialRating={isEditing ? reviewDetails.rating : 0}
+          initialComment={isEditing ? reviewDetails.comment : ""}
+          onSubmit={isEditing ? handleEditReview : handleReviewSubmit}
+          onClose={() => {
+            setShowReviewModal(false)
+            setIsEditing(false)
+          }}
+          isEditing={isEditing}
+        />
+      )}
+
+      {/* Close dropdown when clicking outside */}
+      {showReviewActions && (
+        <div 
+          className="fixed inset-0 z-0" 
+          onClick={() => setShowReviewActions(false)}
+        />
+        )}
+    </>
+
   )
 }

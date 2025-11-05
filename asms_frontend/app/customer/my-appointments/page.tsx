@@ -8,7 +8,6 @@ import { Plus, Search, Filter } from "lucide-react"
 import AppointmentCard from "../components/appointment-card"
 import BookingWizard from "../components/booking-wizard"
 
-
 const MOCK_APPOINTMENTS = [
   {
     id: "1",
@@ -26,7 +25,6 @@ const MOCK_APPOINTMENTS = [
     time: "10:00 AM",
     status: "completed",
     notes: "",
-    review: null,
   },
   {
     id: "2",
@@ -42,9 +40,8 @@ const MOCK_APPOINTMENTS = [
     serviceType: "Brake Inspection",
     date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
     time: "02:00 PM",
-    status: "confirmed",
+    status: "confirmed", // Changed to completed to test review functionality
     notes: "Bring original documents",
-    review: null,
   },
   {
     id: "3",
@@ -60,9 +57,8 @@ const MOCK_APPOINTMENTS = [
     serviceType: "General Service",
     date: new Date().toISOString(),
     time: "11:30 AM",
-    status: "in-service",
+    status: "pending",
     notes: "",
-    review: null,
   },
   {
     id: "4",
@@ -78,9 +74,8 @@ const MOCK_APPOINTMENTS = [
     serviceType: "Battery Replacement",
     date: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
     time: "03:00 PM",
-    status: "ready-for-pickup",
+    status: "completed",
     notes: "",
-    review: null,
   },
   {
     id: "5",
@@ -98,16 +93,114 @@ const MOCK_APPOINTMENTS = [
     time: "09:00 AM",
     status: "cancelled",
     notes: "",
-    review: null,
   },
 ]
+// const MOCK_APPOINTMENTS = [
+//   {
+//     id: "1",
+//     vehicleInfo: {
+//       type: "Sedan",
+//       brand: "Toyota",
+//       model: "Camry",
+//       year: 2022,
+//       registrationNumber: "ABC-1234",
+//       fuelType: "Petrol",
+//     },
+//     serviceCategory: "Maintenance",
+//     serviceType: "Oil Change",
+//     date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+//     time: "10:00 AM",
+//     status: "completed",
+//     notes: "",
+//      review: {
+//     rating: 4,
+//     comment: "Good service, quick turnaround!"
+//   },
+//   },
+//   {
+//     id: "2",
+//     vehicleInfo: {
+//       type: "SUV",
+//       brand: "Honda",
+//       model: "CR-V",
+//       year: 2021,
+//       registrationNumber: "XYZ-5678",
+//       fuelType: "Diesel",
+//     },
+//     serviceCategory: "Repair",
+//     serviceType: "Brake Inspection",
+//     date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+//     time: "02:00 PM",
+//     status: "confirmed",
+//     notes: "Bring original documents",
+//     review: null,
+//   },
+//   {
+//     id: "3",
+//     vehicleInfo: {
+//       type: "Sedan",
+//       brand: "Maruti",
+//       model: "Swift",
+//       year: 2023,
+//       registrationNumber: "DEF-9012",
+//       fuelType: "Petrol",
+//     },
+//     serviceCategory: "Maintenance",
+//     serviceType: "General Service",
+//     date: new Date().toISOString(),
+//     time: "11:30 AM",
+//     status: "pending",
+//     notes: "",
+//     review: null,
+//   },
+//   {
+//     id: "4",
+//     vehicleInfo: {
+//       type: "Sedan",
+//       brand: "Hyundai",
+//       model: "Creta",
+//       year: 2020,
+//       registrationNumber: "GHI-3456",
+//       fuelType: "Petrol",
+//     },
+//     serviceCategory: "Repair",
+//     serviceType: "Battery Replacement",
+//     date: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
+//     time: "03:00 PM",
+//     status: "ready-for-pickup",
+//     notes: "",
+//     review: null,
+//   },
+//   {
+//     id: "5",
+//     vehicleInfo: {
+//       type: "SUV",
+//       brand: "Mahindra",
+//       model: "XUV500",
+//       year: 2019,
+//       registrationNumber: "JKL-7890",
+//       fuelType: "Diesel",
+//     },
+//     serviceCategory: "Maintenance",
+//     serviceType: "Oil Change",
+//     date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+//     time: "09:00 AM",
+//     status: "cancelled",
+//     notes: "",
+//     review: null,
+//   },
+// ]
 
 
 
 export default function CustomerPage() {
   const [appointments, setAppointments] = useState(MOCK_APPOINTMENTS)
   const [filterStatus, setFilterStatus] = useState<string | null>(null)
-  const [reviews, setReviews] = useState<Record<string, string>>({})
+//   const [reviews, setReviews] = useState<Record<string, string>>({})
+  // Initialize with hardcoded reviews for testing
+  const [reviews, setReviews] = useState<Record<string, string>>({
+    "1": "4 - Great service! The oil change was done quickly and professionally.",
+  })
   const [loading, setLoading] = useState(false)
   const [showWizard, setShowWizard] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -142,6 +235,17 @@ export default function CustomerPage() {
     }
   }
 
+  const handleCancelAppointment = (appointmentId: string) => {
+  setAppointments(prev =>
+    prev.map(a =>
+      a.id === appointmentId ? { ...a, status: "cancelled" } : a
+    )
+  )
+  // Optionally, call API to cancel on server
+  console.log("Cancelled appointment", appointmentId)
+}
+
+
   const filteredAppointments = appointments.filter((apt) => {
     const matchesStatus = filterStatus ? apt.status === filterStatus : true
     const matchesSearch = searchQuery
@@ -155,6 +259,7 @@ export default function CustomerPage() {
   const handleReviewSubmit = (appointmentId: string, rating: string, comment: string) => {
     const submitReview = async () => {
       try {
+              console.log("🔄 Submitting review to backend...", { appointmentId, rating, comment })
         const response = await fetch("/api/reviews", {
           method: "POST",
           headers: {
@@ -173,12 +278,86 @@ export default function CustomerPage() {
             [appointmentId]: `${rating} - ${comment}`,
           }))
         }
+        alert("✅ Review submitted successfully!")
       } catch (error) {
-        console.error("Error submitting review:", error)
+            console.error("Error submitting review:", error)
+            alert("❌ Failed to submit review")
       }
     }
 
     submitReview()
+  }
+
+  // Add these functions to CustomerPage
+const handleEditReview = (appointmentId: string, newRating: string, newComment: string) => {
+  const updateReview = async () => {
+    try {
+      const response = await fetch("/api/reviews", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          appointmentId,
+          rating: newRating,
+          comment: newComment,
+        }),
+      })
+
+      if (response.ok) {
+        setReviews((prev) => ({
+          ...prev,
+          [appointmentId]: `${newRating} - ${newComment}`,
+        }))
+        alert("✅ Review updated successfully!")
+      }
+    } catch (error) {
+      console.error("Error updating review:", error)
+      alert("❌ Failed to update review")
+    }
+  }
+
+  updateReview()
+}
+
+const handleDeleteReview = (appointmentId: string) => {
+  const deleteReview = async () => {
+    try {
+         console.log("🔄 Deleting review from backend...", { appointmentId })
+      const response = await fetch(`/api/reviews?appointmentId=${appointmentId}`, {
+        method: "DELETE",
+      })
+
+      if (response.ok) {
+        setReviews((prev) => {
+          const newReviews = { ...prev }
+          delete newReviews[appointmentId]
+          return newReviews
+        })
+        alert("✅ Review deleted successfully!")
+      }
+    } catch (error) {
+      console.error("Error deleting review:", error)
+      alert("❌ Failed to delete review")
+    }
+  }
+
+  deleteReview()
+}
+
+
+  // Test functions for hardcoded testing
+  const addTestReview = () => {
+    setReviews((prev) => ({
+      ...prev,
+      "3": "5 - Test review added for debugging!",
+    }))
+    alert("✅ Test review added!")
+  }
+
+  const clearAllReviews = () => {
+    setReviews({})
+    alert("✅ All reviews cleared!")
   }
 
   return (
@@ -200,7 +379,7 @@ export default function CustomerPage() {
                   <Button
                     onClick={() => setShowWizard(true)}
                     size="lg"
-                    className="bg-primary hover:bg-primary-600 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 px-6 py-6"
+                    className="bg-blue-600 hover:bg-blue-400 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 px-6 py-6"
                   >
                     <Plus className="w-5 h-5 mr-2" />
                     New Appointment
@@ -230,9 +409,9 @@ export default function CustomerPage() {
                       <p className="text-muted-foreground text-sm font-medium mb-1">Total</p>
                       <p className="text-3xl font-bold text-black">{appointments.length}</p>
                     </div>
-                    <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
+                    {/* <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
                       <Filter className="w-6 h-6 text-primary" />
-                    </div>
+                    </div> */}
                   </div>
                 </div>
                 
@@ -244,9 +423,9 @@ export default function CustomerPage() {
                         {appointments.filter((a) => ["pending", "confirmed"].includes(a.status)).length}
                       </p>
                     </div>
-                    <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
+                    {/* <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
                       <div className="w-6 h-6 text-primary font-bold">📅</div>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
 
@@ -258,9 +437,9 @@ export default function CustomerPage() {
                         {appointments.filter((a) => a.status === "in-service").length}
                       </p>
                     </div>
-                    <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center">
+                    {/* <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center">
                       <div className="w-6 h-6 text-purple-600 font-bold">⚙️</div>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
 
@@ -272,9 +451,9 @@ export default function CustomerPage() {
                         {appointments.filter((a) => a.status === "completed").length}
                       </p>
                     </div>
-                    <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
+                    {/* <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
                       <div className="w-6 h-6 text-green-600 font-bold">✓</div>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               </div>
@@ -282,7 +461,7 @@ export default function CustomerPage() {
               {/* Filter Tabs */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <Filter className="w-5 h-5 text-muted-foreground" />
+                  {/* <Filter className="w-5 h-5 text-muted-foreground" /> */}
                   <h3 className="text-lg font-semibold text-black">Filter by Status</h3>
                 </div>
                 
@@ -291,8 +470,8 @@ export default function CustomerPage() {
                     onClick={() => setFilterStatus(null)}
                     className={`px-5 py-2.5 rounded-xl font-medium transition-all duration-200 whitespace-nowrap ${
                       filterStatus === null
-                        ? "bg-primary text-white shadow-md scale-105"
-                        : "bg-gray-50 text-foreground border border-gray-200 hover:border-primary hover:bg-blue-50"
+                        ? "bg-blue-600 text-white shadow-md scale-105"
+                        : "bg-gray-50 text-foreground border border-gray-200 hover:border-gray-200 "
                     }`}
                   >
                     All ({appointments.length})
@@ -306,8 +485,8 @@ export default function CustomerPage() {
                         onClick={() => setFilterStatus(status.value)}
                         className={`px-5 py-2.5 rounded-xl font-medium transition-all duration-200 whitespace-nowrap border ${
                           filterStatus === status.value
-                            ? "bg-primary text-white shadow-md scale-105 border-primary"
-                            : `${status.color} hover:scale-105 hover:shadow-md`
+                            ? "bg-blue-600 text-white shadow-md scale-105 border-gray-200"
+                            : `bg-gray-50 hover:scale-105 hover:shadow-md border-gray-200`
                         }`}
                       >
                         {status.label} ({count})
@@ -342,13 +521,15 @@ export default function CustomerPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredAppointments.map((appointment) => (
                       <AppointmentCard
-                        key={appointment.id}
-                        appointment={appointment}
-                        hasReview={!!reviews[appointment.id]}
-                        onReviewSubmit={(rating, comment) =>
-                          handleReviewSubmit(appointment.id, rating, comment)
-                        }
-                      />
+  key={appointment.id}
+  appointment={appointment}
+  hasReview={!!reviews[appointment.id]}
+  reviewContent={reviews[appointment.id]}
+  onReviewSubmit={(rating, comment) => handleReviewSubmit(appointment.id, rating, comment)}
+  onEditReview={(appointmentId, rating, comment) => handleEditReview(appointmentId, rating, comment)}
+  onDeleteReview={(appointmentId) => handleDeleteReview(appointmentId)}
+  onCancel={handleCancelAppointment}
+/>
                     ))}
                   </div>
                 </>

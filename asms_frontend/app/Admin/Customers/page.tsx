@@ -179,7 +179,7 @@ const CustomersPage = () => {
 
           <div className='flex-1 bg-gray-50 relative overflow-y-auto'>
              <div className='flex justify-between items-center mb-6'>
-            <h1 className='text-3xl font-bold text-gray-800'>Customer Management</h1>
+            <h1 className='text-3xl font-bold text-blue-900'>Customer Management</h1>
             {/* Summary Stats */}
            <div className='flex gap-4'>
           <div className='bg-white px-4 py-2 rounded-lg shadow-md'>
@@ -265,7 +265,7 @@ const CustomersPage = () => {
         {/* Customer Table */}
         <div className='bg-white rounded-lg shadow-md overflow-hidden'>
           <table className='w-full'>
-            <thead className='bg-indigo-600'>
+            <thead className='bg-gray-800'>
               <tr>
                 <th className='px-4 py-4 text-left text-white font-semibold'>
                   <Checkbox
@@ -295,13 +295,13 @@ const CustomersPage = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className='px-6 py-8 text-center text-gray-500'>
+                  <td colSpan={8} className='px-6 py-8 text-center text-black'>
                     Loading customers...
                   </td>
                 </tr>
               ) : filteredCustomers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className='px-6 py-8 text-center text-gray-500'>
+                  <td colSpan={8} className='px-6 py-8 text-center text-black'>
                     No customers found matching your search.
                   </td>
                 </tr>
@@ -309,7 +309,7 @@ const CustomersPage = () => {
                 filteredCustomers.map((customer, index) => (
                   <tr 
                     key={customer.id} 
-                    className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-indigo-50 transition-colors`}
+                    className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-gray-100 transition-colors`}
                   >
                     <td className='px-4 py-4'>
                       <Checkbox
@@ -317,7 +317,7 @@ const CustomersPage = () => {
                         onChange={() => handleSelectRow(customer.id)}
                         onClick={(e) => e.stopPropagation()}
                         sx={{
-                          color: '#6366f1',
+                          color: '#000000',
                           '&.Mui-checked': {
                             color: '#6366f1',
                           },
@@ -328,9 +328,9 @@ const CustomersPage = () => {
                     <td className='px-6 py-4 font-medium text-gray-900'>
                       {customer.firstName} {customer.lastName}
                     </td>
-                    <td className='px-6 py-4 text-gray-700'>{customer.email}</td>
-                    <td className='px-6 py-4 text-gray-700'>{customer.phoneNumber || 'N/A'}</td>
-                    <td className='px-6 py-4 text-gray-700'>{customer.address || 'N/A'}</td>
+                    <td className='px-6 py-4 text-black'>{customer.email}</td>
+                    <td className='px-6 py-4 text-black'>{customer.phoneNumber || 'N/A'}</td>
+                    <td className='px-6 py-4 text-black'>{customer.address || 'N/A'}</td>
                     <td className='px-6 py-4'>
                       <select
                         value={customer.isActive ? 'Active' : 'Inactive'}

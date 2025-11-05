@@ -375,7 +375,7 @@ const EmployeesPage = () => {
           )}
 
           <div className='flex justify-between items-center mb-6'>
-          <h1 className='text-3xl font-bold text-gray-800'>Employee Management</h1>
+          <h1 className='text-3xl font-bold text-blue-900'>Employee Management</h1>
           <button
             onClick={() => setIsPopupOpen(true)}
             className='bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-md'
@@ -449,7 +449,7 @@ const EmployeesPage = () => {
         {/* Employee Table */}
         <div className='bg-white rounded-lg shadow-md overflow-hidden'>
           <table className='w-full'>
-            <thead className='bg-indigo-600 text-white'>
+            <thead className='bg-gray-800 text-white'>
               <tr>
                 <th className='px-4 py-4 text-left'>
                   <Checkbox
@@ -479,13 +479,13 @@ const EmployeesPage = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className='px-6 py-8 text-center text-gray-500'>
+                  <td colSpan={8} className='px-6 py-8 text-center text-black'>
                     Loading employees...
                   </td>
                 </tr>
               ) : filteredEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className='px-6 py-8 text-center text-gray-500'>
+                  <td colSpan={8} className='px-6 py-8 text-center text-black'>
                     No employees found matching your search.
                   </td>
                 </tr>
@@ -493,7 +493,7 @@ const EmployeesPage = () => {
                 filteredEmployees.map((employee, index) => (
                   <tr 
                     key={employee.id} 
-                    className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-indigo-50 transition-colors`}
+                    className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-gray-100 transition-colors`}
                   >
                     <td className='px-4 py-4'>
                       <Checkbox
@@ -501,7 +501,7 @@ const EmployeesPage = () => {
                         onChange={() => handleSelectRow(employee.id)}
                         onClick={(e) => e.stopPropagation()}
                         sx={{
-                          color: '#6366f1',
+                          color: '#00000',
                           '&.Mui-checked': {
                             color: '#6366f1',
                           },
@@ -512,10 +512,10 @@ const EmployeesPage = () => {
                     <td className='px-6 py-4 font-medium text-gray-900'>
                       {employee.firstName} {employee.lastName}
                     </td>
-                    <td className='px-6 py-4 text-gray-700'>{employee.email}</td>
-                    <td className='px-6 py-4 text-gray-700'>{employee.phoneNumber || 'N/A'}</td>
-                    <td className='px-6 py-4 text-gray-700'>{employee.position || 'N/A'}</td>
-                    <td className='px-6 py-4 text-gray-700'>{employee.department || 'N/A'}</td>
+                    <td className='px-6 py-4 text-black'>{employee.email}</td>
+                    <td className='px-6 py-4 text-black'>{employee.phoneNumber || 'N/A'}</td>
+                    <td className='px-6 py-4 text-black'>{employee.position || 'N/A'}</td>
+                    <td className='px-6 py-4 text-black'>{employee.department || 'N/A'}</td>
                     <td className='px-6 py-4'>
                       <div className='flex gap-2 justify-center'>
                         <Tooltip title="Edit Employee">

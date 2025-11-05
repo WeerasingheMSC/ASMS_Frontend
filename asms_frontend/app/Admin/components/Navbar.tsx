@@ -126,7 +126,6 @@ const Navbar = () => {
               <FaUserCircle className='text-3xl text-gray-600' />
             )}
             <div className='text-left hidden md:block'>
-              <p className='text-sm font-semibold text-gray-800'>{user?.username || 'Admin'}</p>
               <p className='text-xs text-gray-500'>{user?.role || 'Administrator'}</p>
             </div>
             <MdKeyboardArrowDown
@@ -139,10 +138,6 @@ const Navbar = () => {
           {/* Profile Dropdown Menu */}
           {showProfileDropdown && (
             <div className='absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 z-50'>
-              <div className='p-4 border-b border-gray-200'>
-                <p className='text-sm font-semibold text-gray-800'>{user?.username || 'Admin'}</p>
-                <p className='text-xs text-gray-500'>{user?.email || 'admin@example.com'}</p>
-              </div>
               <div className='py-2'>
                 <button
                   onClick={handleProfileUpdate}

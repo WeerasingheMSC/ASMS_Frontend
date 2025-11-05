@@ -272,7 +272,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
   return (
     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
       {/* Header with Search and Filters */}
-      <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+      <div className="p-6 border-b border-gray-200 bg-linear-to-r from-blue-50 to-indigo-50">
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
           <div className="flex-1">
             <h3 className="text-2xl font-bold text-gray-900">Team Members ({filteredMembers.length})</h3>
@@ -341,7 +341,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
                 <tr key={member.id} className="hover:bg-blue-50/30 transition-colors duration-150 group">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-400 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-md group-hover:scale-110 transition-transform duration-200">
+                      <div className="w-10 h-10 bg-linear-to-br from-blue-600 to-blue-400 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-md group-hover:scale-110 transition-transform duration-200">
                         {member.fullName?.split(' ').map(n => n[0]).join('').toUpperCase()}
                       </div>
                       <span className="font-medium text-gray-900">{member.fullName}</span>
@@ -409,7 +409,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
           <div className="bg-white rounded-3xl shadow-2xl border border-gray-200 w-full max-w-6xl max-h-[95vh] overflow-hidden animate-scaleIn">
             {/* Header */}
-            <div className="relative p-8 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+            <div className="relative p-8 border-b border-gray-200 bg-linear-to-r from-blue-50 to-indigo-50">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-3xl font-bold text-gray-900 mb-2">
@@ -436,7 +436,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
                     {/* Personal Information */}
                     <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm">
                       <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                        <div className="w-2 h-8 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
+                        <div className="w-2 h-8 bg-linear-to-b from-blue-500 to-blue-600 rounded-full"></div>
                         Personal Information
                       </h3>
                       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -463,7 +463,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
                     {/* Work Information */}
                     <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm">
                       <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                        <div className="w-2 h-8 bg-gradient-to-b from-green-500 to-green-600 rounded-full"></div>
+                        <div className="w-2 h-8 bg-linear-to-b from-green-500 to-green-600 rounded-full"></div>
                         Work Information
                       </h3>
                       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -488,7 +488,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
                     {/* Address */}
                     <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm">
                       <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                        <div className="w-2 h-8 bg-gradient-to-b from-purple-500 to-purple-600 rounded-full"></div>
+                        <div className="w-2 h-8 bg-linear-to-b from-purple-500 to-purple-600 rounded-full"></div>
                         Address Information
                       </h3>
                       <div className="space-y-3">
@@ -505,7 +505,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
                     {selectedMember.supervisorName && (
                       <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm">
                         <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                          <div className="w-2 h-8 bg-gradient-to-b from-orange-500 to-orange-600 rounded-full"></div>
+                          <div className="w-2 h-8 bg-linear-to-b from-orange-500 to-orange-600 rounded-full"></div>
                           Supervisor Information
                         </h3>
                         <div className="space-y-3">
@@ -528,7 +528,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
                       {/* Personal Information */}
                       <div className="space-y-6">
                         <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-3">
-                          <div className="w-2 h-8 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
+                          <div className="w-2 h-8 bg-linear-to-b from-blue-500 to-blue-600 rounded-full"></div>
                           Personal Details
                         </h3>
                         
@@ -592,7 +592,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
                       {/* Work Information */}
                       <div className="space-y-6">
                         <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-3">
-                          <div className="w-2 h-8 bg-gradient-to-b from-green-500 to-green-600 rounded-full"></div>
+                          <div className="w-2 h-8 bg-linear-to-b from-green-500 to-green-600 rounded-full"></div>
                           Work Details
                         </h3>
                         
@@ -691,7 +691,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
                     {/* Address */}
                     <div className="space-y-6">
                       <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-3">
-                        <div className="w-2 h-8 bg-gradient-to-b from-purple-500 to-purple-600 rounded-full"></div>
+                        <div className="w-2 h-8 bg-linear-to-b from-purple-500 to-purple-600 rounded-full"></div>
                         Address Information
                       </h3>
                       <div>
@@ -725,7 +725,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
                       </button>
                       <button
                         type="submit"
-                        className="px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold rounded-xl hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200 disabled:opacity-50 text-lg shadow-lg shadow-blue-500/25"
+                        className="px-8 py-4 bg-linear-to-r from-blue-600 to-blue-700 text-white font-bold rounded-xl hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200 disabled:opacity-50 text-lg shadow-lg shadow-blue-500/25"
                         disabled={loading}
                       >
                         {loading ? (
@@ -748,7 +748,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
               <div className="flex gap-4 justify-end p-8 border-t border-gray-200 bg-gray-50">
                 <button
                   onClick={() => setModalMode("edit")}
-                  className="px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold rounded-xl hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200 disabled:opacity-50 text-lg shadow-lg shadow-blue-500/25"
+                  className="px-8 py-4 bg-linear-to-r from-blue-600 to-blue-700 text-white font-bold rounded-xl hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200 disabled:opacity-50 text-lg shadow-lg shadow-blue-500/25"
                   disabled={loading}
                 >
                   Edit Member

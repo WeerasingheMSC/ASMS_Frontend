@@ -42,16 +42,16 @@ export default function Home() {
             </Link>
           </div>
 
-          {/* Mechanic Card */}
+          {/* Employee card */}
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-8 border border-white/20 hover:bg-white/20 transition duration-300">
             <div className="text-5xl mb-4">🔧</div>
-            <h3 className="text-2xl font-semibold mb-4">Mechanic</h3>
+            <h3 className="text-2xl font-semibold mb-4">Employee</h3>
             <p className="text-sm opacity-80 mb-6">Manage service tasks, update repair status, and communicate with customers</p>
             <Link 
-              href="/signup?role=ROLE_MECHANIC"
+              href="/signup?role=EMPLOYEE"
               className="block w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition duration-300 mb-3"
             >
-              Sign Up as Mechanic
+              Sign Up as Employee
             </Link>
           </div>
 

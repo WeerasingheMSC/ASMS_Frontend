@@ -2,6 +2,10 @@
 import React, { useEffect, useState } from "react";
 import styles from "../employee/employee.module.css";
 import projectsApi from "../lib/projectsApi";
+import Link from 'next/link';
+import { teams as sharedTeams, members as sharedMembers } from "../lib/teamData";
+import { getToken } from '../utils/auth';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 type Project = {
   name: string;
@@ -55,8 +59,8 @@ function WorkloadOverview({ projects: initial }: { projects?: Project[] }) {
   const onHoldLen = circumference * (total ? onHold / total : 0);
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-      <div style={{ width: 160, height: 160, position: "relative" }}>
+    <div className={styles.workloadContainer}>
+      <div className={styles.chartWrapper}>
         <svg width={160} height={160} viewBox="0 0 160 160">
           <g transform="rotate(-90 80 80)">
             <circle cx="80" cy="80" r="60" fill="none" stroke="#eef2f7" strokeWidth="14" />
@@ -66,24 +70,24 @@ function WorkloadOverview({ projects: initial }: { projects?: Project[] }) {
           </g>
         </svg>
 
-        <div style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column" }}>
-          <div style={{ fontSize: 20, fontWeight: 700, color: "#000" }}>{inProgress}</div>
-          <div style={{ fontSize: 12, color: "#000000ff" }}>Active</div>
+        <div className={styles.chartCenter}>
+          <div className={styles.chartNumber}>{inProgress}</div>
+          <div className={styles.chartLabel}>Active</div>
         </div>
       </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <span style={{ width: 10, height: 10, borderRadius: 9999, background: "#16a34a", display: "inline-block" }} />
-            <div style={{ color: "#000" }}>Completed <span style={{ color: "#6b7280", marginLeft: 6 }}>({completed})</span></div>
+        <div className={styles.legendContainer}>
+          <div className={styles.legendItem}>
+            <span className={`${styles.legendDot} ${styles.legendDotCompleted}`} />
+            <div className={styles.legendText}>Completed <span className={styles.legendCount}>({completed})</span></div>
           </div>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <span style={{ width: 10, height: 10, borderRadius: 9999, background: "#2563eb", display: "inline-block" }} />
-            <div style={{ color: "#000" }}>In Progress <span style={{ color: "#6b7280", marginLeft: 6 }}>({inProgress})</span></div>
+          <div className={styles.legendItem}>
+            <span className={`${styles.legendDot} ${styles.legendDotInProgress}`} />
+            <div className={styles.legendText}>In Progress <span className={styles.legendCount}>({inProgress})</span></div>
           </div>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <span style={{ width: 10, height: 10, borderRadius: 9999, background: "#f59e0b", display: "inline-block" }} />
-            <div style={{ color: "#000" }}>On Hold <span style={{ color: "#6b7280", marginLeft: 6 }}>({onHold})</span></div>
+          <div className={styles.legendItem}>
+            <span className={`${styles.legendDot} ${styles.legendDotOnHold}`} />
+            <div className={styles.legendText}>On Hold <span className={styles.legendCount}>({onHold})</span></div>
           </div>
         </div>
     </div>
@@ -92,6 +96,9 @@ function WorkloadOverview({ projects: initial }: { projects?: Project[] }) {
 
 export default function EmployeeDashboardPage() {
   const [projectsData, setProjectsData] = useState<Project[]>(defaultSample);
+  const [backendTeams, setBackendTeams] = useState<any[]>([]);
+  const [backendMembers, setBackendMembers] = useState<any[]>([]);
+  const [backendTeamStats, setBackendTeamStats] = useState<any[]>([]);
 
   useEffect(() => {
     let mounted = true;
@@ -104,16 +111,58 @@ export default function EmployeeDashboardPage() {
     return () => { mounted = false; };
   }, []);
 
+  // fetch backend teams/members/stats to show live team overview when available
+  useEffect(() => {
+    let mounted = true;
+    const token = getToken();
+    if (!token) return;
+
+    (async () => {
+      try {
+        const tResp = await fetch(`${API_URL}/api/employee/teams/all`, { headers: { Authorization: `Bearer ${token}` } });
+        if (tResp.ok) {
+          const tData = await tResp.json();
+          if (!mounted) return;
+          setBackendTeams(Array.isArray(tData) ? tData : (tData.data || []));
+        }
+      } catch (e) {}
+
+      try {
+        const sResp = await fetch(`${API_URL}/api/employee/all-teams-stats`, { headers: { Authorization: `Bearer ${token}` } });
+        if (sResp.ok) {
+          const sData = await sResp.json();
+          if (!mounted) return;
+          setBackendTeamStats(Array.isArray(sData) ? sData : (sData.data || []));
+        }
+      } catch (e) {}
+
+      try {
+        const mResp = await fetch(`${API_URL}/api/employee/allteam`, { headers: { Authorization: `Bearer ${token}` } });
+        if (mResp.ok) {
+          const mData = await mResp.json();
+          if (!mounted) return;
+          const rawMembers = Array.isArray(mData) ? mData : (mData.data || []);
+          // normalize minimal fields
+          const members = rawMembers.map((m: any) => ({ id: m.id ?? m.employeeId ?? m.userId, name: m.fullName || m.name || `${m.firstName || ''} ${m.lastName || ''}`.trim(), team: m.team || m.teamName || m.team_name, productivity: m.productivity ?? m.productivityScore ?? null }));
+          setBackendMembers(members);
+        }
+      } catch (e) {}
+    })();
+
+    return () => { mounted = false; };
+  }, []);
+
   const inProgressProjects = projectsData.filter((p) => p.status === "In Progress");
   const inProgressCount = inProgressProjects.length;
   const totalProjects = projectsData.length || 0;
   // percent of projects that are In Progress (out of all projects)
   const percentInProgress = totalProjects ? Math.round((inProgressCount / totalProjects) * 100) : 0;
 
-  // keep a small average progress value if still useful elsewhere (not used by bar anymore)
-  const avgProgress = inProgressCount
-    ? Math.round(inProgressProjects.reduce((s, p) => s + (p.progress || 0), 0) / inProgressCount)
-    : 0;
+  // dashboard status counts
+  const statusCounts = countByStatus(projectsData);
+  const dashboardCompleted = statusCounts.Completed || 0;
+  const dashboardInProgress = statusCounts["In Progress"] || 0;
+  const dashboardOnHold = statusCounts["On Hold"] || 0;
 
   useEffect(() => {
     // listen for updates from other components that write to localStorage
@@ -172,7 +221,7 @@ export default function EmployeeDashboardPage() {
   const todayDisplay = today.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 
   const scheduledToday = projectsData.filter((p) => {
-    const iso = normalizeToISO(p.due as unknown as string);
+    const iso = normalizeToISO(p.due);
     return iso === todayISO && p.status !== "Completed";
   });
 
@@ -183,25 +232,27 @@ export default function EmployeeDashboardPage() {
           <p className="text-gray-500 mt-1">Manage your tasks and appointments.</p>
         </header>
   <section className="grid grid-cols-2 gap-6">
-    <div className="col-span-1 bg-white p-6 rounded-lg shadow-sm" style={{ maxWidth: 600 }}>
+    <div className={`col-span-1 bg-white p-6 rounded-lg shadow-sm ${styles.projectsCard}`}>
           <div className="flex items-start justify-between mb-4">
             <h2 className="text-xl font-semibold">My Projects</h2>
             <a href="/employee/projects" className="text-sm text-blue-600">View All</a>
           </div>
 
           {/* Summary for In Progress projects (aggregate percentage) */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#5e2a2aff" }}>In Progress</div>
-              <div style={{ color: "#292b2eff" }}>{inProgressCount} project{inProgressCount !== 1 ? "s" : ""}</div>
+          <div className={styles.summaryRow}>
+            <div className={styles.summaryLeft}>
+                <div className={styles.summaryTitle}>In Progress</div>
+              <div className={styles.summaryCount}>{inProgressCount} project{inProgressCount !== 1 ? "s" : ""}</div>
             </div>
 
-            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-              <div style={{ width: 160 }}>
-                <div style={{ height: 8, background: "#eef2f6", borderRadius: 9999, overflow: "hidden" }}>
-                  <div style={{ width: `${percentInProgress}%`, height: "100%", background: "#16a34a" }} />
+            <div className={styles.summaryRight}>
+              <div className={styles.progressBarWrapper}>
+                {/* Dynamic width requires inline style - progress percentage is calculated at runtime */}
+                <div className={styles.progressBarTrack}>
+                  {/* @ts-expect-error CSS custom property for dynamic value */}
+                  <div className={styles.progressBarFill} style={{ '--progress-percentage': percentInProgress }} />
                 </div>
-                <div style={{ fontSize: 12, color: "#000", fontWeight: 700, marginTop: 6 }}>{percentInProgress}% In Progress</div>
+                <div className={styles.progressBarLabel}>{percentInProgress}% In Progress</div>
               </div>
             </div>
           </div>
@@ -209,13 +260,13 @@ export default function EmployeeDashboardPage() {
           <ul className={`${styles.myProjects} space-y-4`}>
             {inProgressProjects.length === 0 ? (
               <li className={styles.projectItem}>
-                <div style={{ color: '#6b7280' }}>No projects in progress</div>
+                <div className={styles.noProjects}>No projects in progress</div>
               </li>
             ) : (
               inProgressProjects.map((p) => (
                 <li key={p.name} className={styles.projectItem}>
                   <div className={styles.projectLeft}>
-                    <div className={styles.iconBox} style={{ background: p.status === 'In Progress' ? '#fff7ed' : '#fff', color: '#047857' }}>
+                    <div className={`${styles.iconBox} ${styles.iconBoxInProgress}`}>
                       {/* simple status glyph */}
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 12h18" stroke="#047857" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     </div>
@@ -226,7 +277,7 @@ export default function EmployeeDashboardPage() {
                   </div>
                   <div className={styles.projectRight}>
                     {/* due date kept optional; if you previously removed due dates, we can hide this */}
-                    <div style={{ fontSize: 12, color: '#6b7280' }}>{p.due}</div>
+                    <div className={styles.dueDate}>{p.due}</div>
                   </div>
                 </li>
               ))
@@ -238,7 +289,7 @@ export default function EmployeeDashboardPage() {
           <div className="flex items-start justify-between mb-3">
             <div>
               <h3 className={`${styles.cardHeading} text-base`}>Today's Schedule</h3>
-              <div style={{ color: '#6b7280', fontSize: 12 }}>{todayDisplay}</div>
+              <div className={styles.scheduleDate}>{todayDisplay}</div>
             </div>
             <a href="/employee/projects" className="text-sm text-blue-600">View All</a>
           </div>
@@ -247,7 +298,7 @@ export default function EmployeeDashboardPage() {
             {scheduledToday.length === 0 ? (
               <li className={styles.scheduleItem}>
                 <div className={styles.scheduleLeft}>
-                  <div style={{ color: '#6b7280' }}>No projects scheduled for today</div>
+                  <div className={styles.noProjects}>No projects scheduled for today</div>
                 </div>
               </li>
             ) : (
@@ -266,15 +317,170 @@ export default function EmployeeDashboardPage() {
             )}
           </ul>
         </div>
+      
       </section>
 
-      <section className="bg-white p-4 rounded-lg shadow-sm" style={{ maxHeight: 250,maxWidth:450, overflow: "hidden" }}>
-        <h3 className="font-semibold mb-3">Workload Overview</h3>
-        <div>
-          {/* client component reads projects from localStorage or falls back to sample */}
+      {/* Dashboard summary cards (matches style of customer page) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className='bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow'>
+          <div className='flex items-center justify-between mb-4'>
+            <h3 className='text-lg font-semibold text-gray-800'>In Progress</h3>
+            <div className='bg-blue-100 p-3 rounded-full'>
+              <svg className='w-6 h-6 text-blue-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' />
+              </svg>
+            </div>
+          </div>
+          <p className='text-gray-600 mb-2'>Active projects</p>
+          <div>
+            <span className='text-2xl font-bold text-blue-600'>{dashboardInProgress}</span>
+            <span className='text-gray-500 ml-2'>projects</span>
+          </div>
+        </div>
+
+        <div className='bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow'>
+          <div className='flex items-center justify-between mb-4'>
+            <h3 className='text-lg font-semibold text-gray-800'>Completed</h3>
+            <div className='bg-green-100 p-3 rounded-full'>
+              <svg className='w-6 h-6 text-green-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M20 6L9 17l-5-5' />
+              </svg>
+            </div>
+          </div>
+          <p className='text-gray-600 mb-2'>Finished projects</p>
+          <div>
+            <span className='text-2xl font-bold text-green-600'>{dashboardCompleted}</span>
+            <span className='text-gray-500 ml-2'>projects</span>
+          </div>
+        </div>
+
+        <div className='bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow'>
+          <div className='flex items-center justify-between mb-4'>
+            <h3 className='text-lg font-semibold text-gray-800'>On Hold</h3>
+            <div className='bg-yellow-100 p-3 rounded-full'>
+              <svg className='w-6 h-6 text-yellow-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' />
+              </svg>
+            </div>
+          </div>
+          <p className='text-gray-600 mb-2'>Paused projects</p>
+          <div>
+            <span className='text-2xl font-bold text-yellow-600'>{dashboardOnHold}</span>
+            <span className='text-gray-500 ml-2'>projects</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Workload Overview and Team Overview side-by-side */}
+      <div className="flex flex-col md:flex-row md:items-start md:space-x-4">
+        <div className={`flex-1 bg-white p-4 rounded-lg shadow-sm ${styles.workloadSection}`}>
+          <h3 className="font-semibold mb-3">Workload Overview</h3>
           <WorkloadOverview />
         </div>
-      </section>
+
+  <div className="w-full md:w-2/3 bg-white p-6 rounded-lg shadow-sm mt-4 md:mt-0">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold">Team Overview</h3>
+            <Link href="/employee/team_analysis" className="text-sm text-blue-600">View all</Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {(() => {
+              // Build teams list: prefer backendTeams, then sharedTeams, then derive from projects
+              const teamsList: any[] = (backendTeams && backendTeams.length > 0)
+                ? backendTeams
+                : (sharedTeams && sharedTeams.length > 0)
+                  ? sharedTeams.filter((t:any)=> t.id !== 'all')
+                  : Array.from(new Set(projectsData.map((p:any) => (p.teamName || p.team || '').trim()).filter(Boolean))).map((name:any) => ({ id: name, name }));
+
+              return teamsList.map((t:any) => {
+                const teamName = t.name || t.teamName || t;
+
+                // members: prefer backendMembers then sharedMembers
+                const membersOfTeam = (backendMembers && backendMembers.length>0)
+                  ? backendMembers.filter((m:any)=> String((m.team||m.teamName||'')).trim() === String(teamName).trim())
+                  : (sharedMembers && sharedMembers.length>0)
+                    ? sharedMembers.filter((m:any) => String(m.team).trim() === String(teamName).trim())
+                    : [];
+
+                const membersCount = membersOfTeam.length || (t.totalMembers ?? 0);
+
+                const projectsOfTeam = projectsData.filter((p:any) => (String((p as any).teamName || p.team || '').trim()) === String(teamName).trim()).length;
+
+                // prefer backend team stats when available
+                let avgProd = 0;
+                const stat = backendTeamStats.find((s:any)=> {
+                  const sName = String(s.teamName || s.team_name || s.name || '').trim();
+                  return sName && sName === String(teamName).trim() || String(s.teamId || s.team_id || s.id || '').trim() === String(t.id || '').trim();
+                });
+
+                if (stat) {
+                  avgProd = Number(stat.averageProductivity ?? stat.avgProductivity ?? stat.avg ?? stat.average ?? stat.productivity ?? 0) || 0;
+                } else if (membersOfTeam && membersOfTeam.length > 0) {
+                  const total = membersOfTeam.reduce((acc:any, m:any) => acc + (Number(m.productivity) || 0), 0);
+                  avgProd = membersOfTeam.length ? Math.round(total / membersOfTeam.length) : 0;
+                } else {
+                  // fallback: compute from average project progress for this team
+                  const teamProjects = projectsData.filter((p:any) => (String((p as any).teamName || p.team || '').trim()) === String(teamName).trim());
+                  if (teamProjects.length > 0) {
+                    const totalProgress = teamProjects.reduce((acc:any, p:any) => acc + (Number(p.progress) || 0), 0);
+                    avgProd = Math.round(totalProgress / teamProjects.length);
+                  } else {
+                    // No team-specific projects found — fall back to global average project progress so the dashboard shows a meaningful percentage
+                    const allProjectsWithProgress = projectsData.filter((p:any) => typeof p.progress === 'number');
+                    if (allProjectsWithProgress.length > 0) {
+                      const totalProgress = allProjectsWithProgress.reduce((acc:any, p:any) => acc + (Number(p.progress) || 0), 0);
+                      avgProd = Math.round(totalProgress / allProjectsWithProgress.length);
+                    } else {
+                      // No progress data available; display 0 as a safe default
+                      avgProd = 0;
+                    }
+                  }
+                }
+
+                // sanitize and clamp between 0-100
+                avgProd = Math.max(0, Math.min(100, Math.round(Number(avgProd) || 0)));
+
+                let fillClass = 'bg-orange-400';
+                if (avgProd >= 95) fillClass = 'bg-green-500';
+                else if (avgProd >= 90) fillClass = 'bg-teal-500';
+                else if (avgProd >= 85) fillClass = 'bg-yellow-400';
+
+                const linkTarget = `/employee/team_analysis?team=${encodeURIComponent(teamName)}`;
+
+                return (
+                  <Link
+                    key={t.id || teamName}
+                    href={linkTarget}
+                    className="block"
+                    aria-label={`View ${teamName} details`}
+                  >
+                    <div className="bg-white p-6 rounded-md shadow-sm hover:shadow-lg transition-shadow cursor-pointer">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="text-sm font-medium text-gray-800">{teamName}</div>
+                          <div className="text-xs text-gray-500">{membersCount} members • {projectsOfTeam} projects</div>
+                        </div>
+                        <div className="text-sm font-semibold text-gray-700 ml-2">{avgProd}%</div>
+                      </div>
+
+                      <div className="mt-3">
+                        <div className="w-full bg-gray-100 h-3 rounded overflow-hidden">
+                          <div className={`${fillClass} h-3`} style={{ width: `${avgProd}%` }} />
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between">
+                        <span className="text-xs text-gray-500">Productivity</span>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              });
+            })()}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

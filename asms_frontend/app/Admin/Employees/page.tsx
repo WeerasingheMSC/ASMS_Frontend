@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
+import Navbar from '../components/Navbar'
 import { IoMdClose } from "react-icons/io";
 import { TextField, InputAdornment, IconButton, Tooltip, Checkbox } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
@@ -11,6 +12,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EmailIcon from '@mui/icons-material/Email';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 const EmployeesPage = () => {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
@@ -52,7 +55,7 @@ const EmployeesPage = () => {
       }
 
       const user = JSON.parse(userData);
-      const response = await fetch('http://localhost:8080/api/admin/employees', {
+      const response = await fetch(`${API_URL}/api/admin/employees`, {
         headers: {
           'Authorization': `Bearer ${user.token}`
         }
@@ -139,7 +142,7 @@ const EmployeesPage = () => {
       }
 
       const user = JSON.parse(userData);
-      const response = await fetch(`http://localhost:8080/api/admin/employees/${editFormData.id}`, {
+      const response = await fetch(`${API_URL}/api/admin/employees/${editFormData.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -202,7 +205,7 @@ const EmployeesPage = () => {
       }
 
       const user = JSON.parse(userData);
-      const response = await fetch(`http://localhost:8080/api/admin/employees/${employeeToDelete.id}`, {
+      const response = await fetch(`${API_URL}/api/admin/employees/${employeeToDelete.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${user.token}`
@@ -256,7 +259,7 @@ const EmployeesPage = () => {
       }
 
       const user = JSON.parse(userData);
-      const response = await fetch(`http://localhost:8080/api/admin/employees/${employeeId}/resend-activation`, {
+      const response = await fetch(`${API_URL}/api/admin/employees/${employeeId}/resend-activation`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${user.token}`
@@ -311,7 +314,7 @@ const EmployeesPage = () => {
       }
 
       const user = JSON.parse(userData);
-      const response = await fetch('http://localhost:8080/api/admin/employees', {
+      const response = await fetch(`${API_URL}/api/admin/employees`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -357,23 +360,25 @@ const EmployeesPage = () => {
       <Sidebar activeItem="Employees" />
 
       {/* Main Content */}
-      <div className='w-5/6 p-8 bg-gray-50 relative overflow-y-auto'>
-        {/* Message Display */}
-        {message.text && (
-          <div className={`mb-4 p-4 rounded-lg ${
-            message.type === 'success' 
-              ? 'bg-green-50 border border-green-200 text-green-800' 
-              : 'bg-red-50 border border-red-200 text-red-800'
-          }`}>
-            {message.text}
-          </div>
-        )}
+      <div className='flex-1 flex flex-col'>
+        <Navbar />
+        <div className='flex-1 p-8 bg-gray-50 relative overflow-y-auto'>
+          {/* Message Display */}
+          {message.text && (
+            <div className={`mb-4 p-4 rounded-lg ${
+              message.type === 'success' 
+                ? 'bg-green-50 border border-green-200 text-green-800' 
+                : 'bg-red-50 border border-red-200 text-red-800'
+            }`}>
+              {message.text}
+            </div>
+          )}
 
-        <div className='flex justify-between items-center mb-6'>
-          <h1 className='text-3xl font-bold text-gray-800'>Employee Management</h1>
+          <div className='flex justify-between items-center mb-6'>
+          <h1 className='text-3xl font-bold text-blue-900'>Employee Management</h1>
           <button
             onClick={() => setIsPopupOpen(true)}
-            className='bg-green-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors shadow-md'
+            className='bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-md'
           >
             + Add New Employee
           </button>
@@ -427,7 +432,7 @@ const EmployeesPage = () => {
             <Tooltip title={selectedRows.length > 0 ? `Export ${selectedRows.length} selected rows to CSV` : 'Export all filtered data to CSV'}>
               <button
                 onClick={handleExportCSV}
-                className='bg-indigo-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-indigo-700 transition-colors shadow-md flex items-center gap-2 whitespace-nowrap'
+                className='bg-green-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-600 transition-colors shadow-md flex items-center gap-2 whitespace-nowrap'
               >
                 <FileDownloadIcon />
                 Export to CSV
@@ -444,7 +449,7 @@ const EmployeesPage = () => {
         {/* Employee Table */}
         <div className='bg-white rounded-lg shadow-md overflow-hidden'>
           <table className='w-full'>
-            <thead className='bg-indigo-600 text-white'>
+            <thead className='bg-gray-800 text-white'>
               <tr>
                 <th className='px-4 py-4 text-left'>
                   <Checkbox
@@ -462,25 +467,25 @@ const EmployeesPage = () => {
                     }}
                   />
                 </th>
-                <th className='px-6 py-4 text-left'>ID</th>
-                <th className='px-6 py-4 text-left'>Name</th>
-                <th className='px-6 py-4 text-left'>Email</th>
-                <th className='px-6 py-4 text-left'>Phone</th>
-                <th className='px-6 py-4 text-left'>Position</th>
-                <th className='px-6 py-4 text-left'>Department</th>
-                <th className='px-6 py-4 text-center'>Actions</th>
+                <th className='px-6 py-4 text-left'><p className='text-white'>ID</p></th>
+                <th className='px-6 py-4 text-left'><p className='text-white'>Name</p></th>
+                <th className='px-6 py-4 text-left'><p className='text-white'>Email</p></th>
+                <th className='px-6 py-4 text-left'><p className='text-white'>Phone</p></th>
+                <th className='px-6 py-4 text-left'><p className='text-white'>Position</p></th>
+                <th className='px-6 py-4 text-left'><p className='text-white'>Department</p></th>
+                <th className='px-6 py-4 text-center'><p className='text-white'>Actions</p></th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className='px-6 py-8 text-center text-gray-500'>
+                  <td colSpan={8} className='px-6 py-8 text-center text-black'>
                     Loading employees...
                   </td>
                 </tr>
               ) : filteredEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className='px-6 py-8 text-center text-gray-500'>
+                  <td colSpan={8} className='px-6 py-8 text-center text-black'>
                     No employees found matching your search.
                   </td>
                 </tr>
@@ -488,7 +493,7 @@ const EmployeesPage = () => {
                 filteredEmployees.map((employee, index) => (
                   <tr 
                     key={employee.id} 
-                    className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-indigo-50 transition-colors`}
+                    className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-gray-100 transition-colors`}
                   >
                     <td className='px-4 py-4'>
                       <Checkbox
@@ -496,7 +501,7 @@ const EmployeesPage = () => {
                         onChange={() => handleSelectRow(employee.id)}
                         onClick={(e) => e.stopPropagation()}
                         sx={{
-                          color: '#6366f1',
+                          color: '#00000',
                           '&.Mui-checked': {
                             color: '#6366f1',
                           },
@@ -507,10 +512,10 @@ const EmployeesPage = () => {
                     <td className='px-6 py-4 font-medium text-gray-900'>
                       {employee.firstName} {employee.lastName}
                     </td>
-                    <td className='px-6 py-4 text-gray-700'>{employee.email}</td>
-                    <td className='px-6 py-4 text-gray-700'>{employee.phoneNumber || 'N/A'}</td>
-                    <td className='px-6 py-4 text-gray-700'>{employee.position || 'N/A'}</td>
-                    <td className='px-6 py-4 text-gray-700'>{employee.department || 'N/A'}</td>
+                    <td className='px-6 py-4 text-black'>{employee.email}</td>
+                    <td className='px-6 py-4 text-black'>{employee.phoneNumber || 'N/A'}</td>
+                    <td className='px-6 py-4 text-black'>{employee.position || 'N/A'}</td>
+                    <td className='px-6 py-4 text-black'>{employee.department || 'N/A'}</td>
                     <td className='px-6 py-4'>
                       <div className='flex gap-2 justify-center'>
                         <Tooltip title="Edit Employee">
@@ -892,6 +897,7 @@ const EmployeesPage = () => {
             </div>
           </>
         )}
+        </div>
       </div>
     </div>
   )

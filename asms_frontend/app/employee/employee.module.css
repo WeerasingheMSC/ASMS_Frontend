@@ -45,13 +45,13 @@
 
 /* Sidebar styles scoped to the employee area (nav on deep navy background) */
 .sidebar {
-	background: #07183a; /* deep navy */
+	background: #172554; 
 	color: #fff;
-	position: fixed; /* keep sidebar visible while page scrolls */
+	position: fixed; 
 	left: 0;
 	top: 0;
 	bottom: 0;
-	width: 14rem; /* matches w-56 */
+	width: 16.666667%; 
 	display: flex;
 	flex-direction: column;
 	z-index: 40;
@@ -61,35 +61,28 @@
 .brand {
 	display: flex;
 	flex-direction: column;
+	/* center children as before; we only want the horizontal line to remain at the bottom */
 	align-items: center;
 	gap: 10px;
-	padding-bottom: 12px;
-	border-bottom: 2px solid rgba(255,255,255,0.06);
+	padding-bottom: 12px; /* restore spacing so divider sits where the previous border was */
+	/* no parent border so the dedicated divider is used */
+	border-bottom: none;
+	position: relative; /* allow absolutely-positioned divider at the bottom */
 }
 .avatarCircle { width: 84px; height: 84px; border-radius: 9999px; overflow: hidden; display:flex; align-items:center; justify-content:center; box-shadow: 0 2px 6px rgba(0,0,0,0.25); }
-.brandName { color: #ffffff; font-weight: 700; margin-top: 4px; }
+.brandName { color: #ffffff !important; font-weight: 700; margin-top: 40px; font-size: 1.5rem; }
 
-/* Navigation */
-.navLink {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	padding: 10px 12px;
-	color: rgba(255,255,255,0.92);
-	border-radius: 10px;
-	text-decoration: none;
-	font-weight: 500;
+/* Small decorative divider under the brand name. Increased width for better visual balance. */
+.brandDivider {
+	position: absolute;
+	left: -60px;
+	right: 0;
+	bottom: -1px; 
+	width: 200%;
+	height: 1.2px; 
+	background: white; 
+	border-radius: 9999px;
 }
-.navLink:hover { background: rgba(255,255,255,0.04); color: #fff; }
-.navIcon { width: 36px; height: 36px; display:flex; align-items:center; justify-content:center; border-radius: 9999px; color: rgba(255,255,255,0.9); }
-.navLabel { font-size: 0.98rem; }
-
-/* Active item: white pill with dark text to match screenshot */
-.active { background: #ffffff; color: #07183a !important; font-weight: 700; }
-.active .navIcon { color: #07183a !important; }
-
-/* Ensure header icons appear above other content */
-.headerIcons { z-index: 50; }
 
 /* Ensure headings, table text and project lines are clearly visible on employee pages */
 :global(h1), :global(h2), :global(h3), :global(h4), :global(h5) {
@@ -118,3 +111,41 @@
 }
 :global(.percent) { color: rgb(57, 55, 55) !important; font-weight:600 !important; }
 :global(.due) { color: rgb(67, 64, 64) !important; font-size:0.8rem !important; }
+
+/* Workload Overview Styles */
+.workloadContainer { display: flex; align-items: center; gap: 20px; }
+.chartWrapper { width: 160px; height: 160px; position: relative; }
+.chartCenter { position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+.chartNumber { font-size: 20px; font-weight: 700; color: #000; }
+.chartLabel { font-size: 12px; color: #000000ff; }
+.legendContainer { display: flex; flex-direction: column; gap: 8px; }
+.legendItem { display: flex; gap: 12px; align-items: center; }
+.legendDot { width: 10px; height: 10px; border-radius: 9999px; display: inline-block; }
+.legendDotCompleted { background: #16a34a; }
+.legendDotInProgress { background: #2563eb; }
+.legendDotOnHold { background: #f59e0b; }
+.legendText { color: #000; }
+.legendCount { color: #6b7280; margin-left: 6px; }
+
+/* Project Cards Styles */
+.projectsCard { max-width: 600px; }
+.summaryRow { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.summaryLeft { display: flex; gap: 8px; align-items: center; }
+.summaryTitle { font-size: 14px; font-weight: 700; color: #5e2a2aff; }
+.summaryCount { color: #292b2eff; }
+.summaryRight { display: flex; gap: 12px; align-items: center; }
+.progressBarWrapper { width: 160px; }
+.progressBarTrack { height: 8px; background: #eef2f6; border-radius: 9999px; overflow: hidden; }
+.progressBarFill { 
+  width: calc(var(--progress-percentage, 0) * 1%);
+  height: 100%; 
+  background: #16a34a; 
+}
+.progressBarLabel { font-size: 12px; color: #000; font-weight: 700; margin-top: 6px; }
+.noProjects { color: #6b7280; }
+.iconBoxInProgress { background: #fff7ed; color: #047857; }
+.dueDate { font-size: 12px; color: #6b7280; }
+
+/* Schedule Styles */
+.scheduleDate { color: #6b7280; font-size: 12px; }
+.workloadSection { max-height: 250px; max-width: 450px; overflow: hidden; }

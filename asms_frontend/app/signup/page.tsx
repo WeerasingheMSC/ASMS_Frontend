@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { FaUser, FaEnvelope, FaLock, FaUserTag } from 'react-icons/fa';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
 const SignUpForm = () => {
   const searchParams = useSearchParams();
   const roleFromUrl = searchParams.get('role') || 'ROLE_CUSTOMER';
@@ -21,7 +23,7 @@ const SignUpForm = () => {
   const getRoleDisplayName = (role: string) => {
     switch(role) {
       case 'ROLE_CUSTOMER': return 'Customer';
-      case 'ROLE_MECHANIC': return 'Mechanic';
+      case 'ROLE_EMPLOYEE': return 'Employee';
       case 'ROLE_ADMIN': return 'Admin';
       default: return 'Customer';
     }
@@ -30,7 +32,7 @@ const SignUpForm = () => {
   const getRoleColor = (role: string) => {
     switch(role) {
       case 'ROLE_CUSTOMER': return 'text-blue-600';
-      case 'ROLE_MECHANIC': return 'text-green-600';
+      case 'ROLE_EMPLOYEE': return 'text-green-600';
       case 'ROLE_ADMIN': return 'text-purple-600';
       default: return 'text-blue-600';
     }
@@ -62,7 +64,7 @@ const SignUpForm = () => {
       // Generate username from email (part before @)
       const username = formData.email.split('@')[0];
       
-      const response = await fetch('http://localhost:8080/api/auth/signup', {
+      const response = await fetch(`${API_URL}/api/auth/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

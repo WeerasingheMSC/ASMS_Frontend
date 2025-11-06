@@ -120,7 +120,7 @@ export default function FAQPage() {
   return (
     <div className='flex'>
       <Sidebar activeItem='FAQ' />
-      <div className='flex-1 bg-gray-50'>
+      <div className='flex-1 bg-gray-50 ml-[16.666667%]'>
         <Container maxWidth="lg" className="py-6">
           <Box className="mb-8">
             <Box className="flex justify-between items-start mb-6">
@@ -194,7 +194,7 @@ export default function FAQPage() {
             </Typography>
           </Paper>
 
-          <Paper className="mt-12 p-8 text-center bg-gradient-to-r from-blue-50 to-indigo-50" elevation={1}>
+          <Paper className="mt-12 p-8 text-center bg-linear-to-r from-blue-50 to-indigo-50" elevation={1}>
             <Typography variant="h5" className="font-semibold mb-2">
               🤔 Didn't find your answer?
             </Typography>

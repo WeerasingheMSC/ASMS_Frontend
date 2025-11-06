@@ -186,7 +186,7 @@ export default function CustomerPage() {
       <div className="flex h-screen overflow-hidden bg-background">
         <Sidebar activeItem="My Appointments" />
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto ml-[16.666667%]">
           <div className="min-h-screen bg-background p-8">
             <div className="max-w-7xl mx-auto space-y-8">
               

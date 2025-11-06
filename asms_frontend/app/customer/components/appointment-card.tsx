@@ -17,19 +17,19 @@ interface AppointmentCardProps {
 }
 
 const STATUS_CONFIG = {
-  pending: { badge: "bg-yellow-100 text-yellow-800", label: "Pending" },
-  confirmed: { badge: "bg-blue-100 text-blue-800", label: "Confirmed" },
-  "in-service": { badge: "bg-purple-100 text-purple-800", label: "In Service" },
-  "ready-for-pickup": { badge: "bg-green-100 text-green-800", label: "Ready for Pickup" },
-  completed: { badge: "bg-teal-100 text-teal-800", label: "Completed" },
-  cancelled: { badge: "bg-red-100 text-red-800", label: "Cancelled" },
+  PENDING: { badge: "bg-yellow-100 text-yellow-800", label: "Pending" },
+  CONFIRMED: { badge: "bg-blue-100 text-blue-800", label: "Confirmed" },
+  IN_SERVICE: { badge: "bg-purple-100 text-purple-800", label: "In Service" },
+  READY: { badge: "bg-green-100 text-green-800", label: "Ready for Pickup" },
+  COMPLETED: { badge: "bg-teal-100 text-teal-800", label: "Completed" },
+  CANCELLED: { badge: "bg-red-100 text-red-800", label: "Cancelled" },
 }
 
 export default function AppointmentCard({ appointment, hasReview, onReviewSubmit,onCancel,reviewContent, onEditReview, onDeleteReview }: AppointmentCardProps) {
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [showReviewActions, setShowReviewActions] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
-  const config = STATUS_CONFIG[appointment.status as keyof typeof STATUS_CONFIG]
+  const config = STATUS_CONFIG[appointment.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.PENDING
   const appointmentDate = new Date(appointment.date)
   const dateStr = appointmentDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
 
@@ -123,7 +123,7 @@ export default function AppointmentCard({ appointment, hasReview, onReviewSubmit
         {/* Action Buttons - Bottom Right Corner */}
         <div className="flex justify-end space-x-2 pt-4 ">
           {/* Cancel Button - only if pending */}
-          {appointment.status === "pending" && (
+          {appointment.status === "PENDING" && (
             <Button
               onClick={() => onCancel(appointment.id)}
               variant="outline"
@@ -136,7 +136,7 @@ export default function AppointmentCard({ appointment, hasReview, onReviewSubmit
           )}
 
            {/* Review Button - only if completed and no review */}
-          {appointment.status === "completed" && !hasReview && (
+          {appointment.status === "COMPLETED" && !hasReview && (
             <Button 
               onClick={() => setShowReviewModal(true)} 
               variant="outline"
@@ -148,7 +148,7 @@ export default function AppointmentCard({ appointment, hasReview, onReviewSubmit
             </Button>
           )}
 
-          {hasReview && appointment.status === "completed" && (
+          {hasReview && appointment.status === "COMPLETED" && (
   <div className="flex items-center gap-3">
     <div className="flex items-center text-green-600 text-sm font-medium bg-green-50 px-3 py-2 rounded-lg border border-green-200">
       <Star className="w-4 h-4 mr-1 fill-green-600" />

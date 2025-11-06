@@ -6,6 +6,7 @@ import VehicleStep from "./booking-steps/vehicle-step"
 import ServiceStep from "./booking-steps/service-step"
 import DateTimeStep from "./booking-steps/date-time-step"
 import ConfirmationStep from "./booking-steps/confirmation-step"
+import { createAppointment } from "../../lib/appointmentsApi"
 
 interface BookingWizardProps {
   onClose: () => void
@@ -72,27 +73,27 @@ export default function BookingWizard({ onClose }: BookingWizardProps) {
     setStep(step - 1)
   }
 
-  const handleConfirm = async () => {
-    try {
-      const response = await fetch("/api/bookings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      })
+  const [isLoading, setIsLoading] = useState(false)
 
-      if (!response.ok) {
-        throw new Error("Failed to create booking")
+  const handleConfirm = async () => {
+    setIsLoading(true)
+    try {
+      const appointmentData = {
+        vehicle: formData.vehicle,
+        service: formData.service,
+        datetime: formData.datetime,
       }
 
-      const result = await response.json()
+      const result = await createAppointment(appointmentData)
       console.log("Booking confirmed:", result)
       alert("Appointment booked successfully!")
       onClose()
     } catch (error) {
       console.error("Error:", error)
-      alert("Failed to book appointment. Please try again.")
+      const errorMessage = error instanceof Error ? error.message : "Failed to book appointment. Please try again."
+      alert(errorMessage)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -185,7 +186,13 @@ export default function BookingWizard({ onClose }: BookingWizardProps) {
             {step === 2 && <ServiceStep data={formData.service} onNext={handleNext} onBack={handleBack} />}
             {step === 3 && <DateTimeStep data={formData.datetime} onNext={handleNext} onBack={handleBack} />}
             {step === 4 && (
-              <ConfirmationStep data={formData} onConfirm={handleConfirm} onBack={handleBack} onCancel={onClose} />
+              <ConfirmationStep 
+                data={formData} 
+                onConfirm={handleConfirm} 
+                onBack={handleBack} 
+                onCancel={onClose}
+                isLoading={isLoading}
+              />
             )}
           </div>
         </div>

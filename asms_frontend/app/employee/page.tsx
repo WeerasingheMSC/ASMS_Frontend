@@ -81,6 +81,7 @@ export default function EmployeeDashboardPage() {
   const [backendTeams, setBackendTeams] = useState<any[]>([]);
   const [backendMembers, setBackendMembers] = useState<any[]>([]);
   const [backendTeamStats, setBackendTeamStats] = useState<any[]>([]);
+  const [mounted, setMounted] = useState(false); // Fix hydration issue
   
   // ✅ State for appointments and stats
   const [appointments, setAppointments] = useState<AppointmentDTO[]>([]);
@@ -93,6 +94,11 @@ export default function EmployeeDashboardPage() {
     inService: 0,
     completed: 0
   });
+
+  // Handle client-side mounting to fix hydration
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // ✅ Fetch appointments and calculate stats from backend
   useEffect(() => {
@@ -185,7 +191,11 @@ export default function EmployeeDashboardPage() {
   const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
     today.getDate()
   ).padStart(2, "0")}`;
-  const todayDisplay = today.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  
+  // Fix hydration error - only format date on client side
+  const todayDisplay = mounted 
+    ? today.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+    : todayISO; // Fallback to ISO format during SSR
 
   // ✅ Filter today's appointments
   const todayAppointments = appointments.filter((apt) => {

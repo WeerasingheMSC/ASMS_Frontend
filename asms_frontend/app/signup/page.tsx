@@ -23,7 +23,7 @@ const SignUpForm = () => {
   const getRoleDisplayName = (role: string) => {
     switch(role) {
       case 'ROLE_CUSTOMER': return 'Customer';
-      case 'ROLE_MECHANIC': return 'Mechanic';
+      case 'ROLE_EMPLOYEE': return 'Employee';
       case 'ROLE_ADMIN': return 'Admin';
       default: return 'Customer';
     }
@@ -32,7 +32,7 @@ const SignUpForm = () => {
   const getRoleColor = (role: string) => {
     switch(role) {
       case 'ROLE_CUSTOMER': return 'text-blue-600';
-      case 'ROLE_MECHANIC': return 'text-green-600';
+      case 'ROLE_EMPLOYEE': return 'text-green-600';
       case 'ROLE_ADMIN': return 'text-purple-600';
       default: return 'text-blue-600';
     }

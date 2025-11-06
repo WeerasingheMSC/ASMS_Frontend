@@ -27,7 +27,7 @@ interface TeamRequestDTO {
   totalWorkingHours: number
   averageAge: number
   description: string
-  employeeId: number // Changed from supervisorId to employeeId
+  employeeId: number
 }
 
 interface NewTeamFormProps {
@@ -45,7 +45,7 @@ export default function FullTeamForm({ onClose, onSuccess }: NewTeamFormProps) {
     totalWorkingHours: 0,
     averageAge: 0,
     description: "",
-    employeeId: 0 // Changed from supervisorId to employeeId
+    employeeId: 0
   })
   const [loading, setLoading] = useState(false)
   const [supervisor, setSupervisor] = useState<Supervisor | null>(null)
@@ -65,6 +65,28 @@ export default function FullTeamForm({ onClose, onSuccess }: NewTeamFormProps) {
     "QUALITY_CONTROL",
     "OTHER"
   ]
+
+  // Function to show success toast
+  const showSuccessToast = (message: string) => {
+    const event = new CustomEvent('showToast', {
+      detail: {
+        message,
+        type: 'success'
+      }
+    });
+    window.dispatchEvent(event);
+  }
+
+  // Function to show error toast
+  const showErrorToast = (message: string) => {
+    const event = new CustomEvent('showToast', {
+      detail: {
+        message,
+        type: 'error'
+      }
+    });
+    window.dispatchEvent(event);
+  }
 
   // Fetch current supervisor info
   useEffect(() => {
@@ -144,7 +166,7 @@ export default function FullTeamForm({ onClose, onSuccess }: NewTeamFormProps) {
         }
         
         setSupervisor(supervisorInfo)
-        setFormData(prev => ({ ...prev, employeeId: supervisorInfo.id })) // Changed to employeeId
+        setFormData(prev => ({ ...prev, employeeId: supervisorInfo.id }))
       } catch (error) {
         console.error("Error fetching supervisor:", error)
         const errorMessage = error instanceof Error ? error.message : "Failed to load supervisor information."
@@ -155,7 +177,7 @@ export default function FullTeamForm({ onClose, onSuccess }: NewTeamFormProps) {
           name: "Current User"
         }
         setSupervisor(fallbackSupervisor)
-        setFormData(prev => ({ ...prev, employeeId: fallbackSupervisor.id })) // Changed to employeeId
+        setFormData(prev => ({ ...prev, employeeId: fallbackSupervisor.id }))
       } finally {
         setUserLoading(false)
       }
@@ -201,7 +223,7 @@ export default function FullTeamForm({ onClose, onSuccess }: NewTeamFormProps) {
       newErrors.description = "Description cannot exceed 500 characters"
     }
 
-    if (!formData.employeeId) { // Changed to employeeId
+    if (!formData.employeeId) {
       newErrors.submit = "Employee information is missing"
     }
 
@@ -225,7 +247,6 @@ export default function FullTeamForm({ onClose, onSuccess }: NewTeamFormProps) {
         throw new Error("No authentication token found. Please log in again.");
       }
 
-      // Use the exact structure from the DTO
       const teamRequestDTO: TeamRequestDTO = {
         name: formData.name.trim(),
         specialization: formData.specialization,
@@ -233,7 +254,7 @@ export default function FullTeamForm({ onClose, onSuccess }: NewTeamFormProps) {
         totalWorkingHours: formData.totalWorkingHours,
         averageAge: formData.averageAge,
         description: formData.description.trim(),
-        employeeId: formData.employeeId // Changed to employeeId
+        employeeId: formData.employeeId
       }
 
       console.log("Creating team with data:", teamRequestDTO);
@@ -255,13 +276,11 @@ export default function FullTeamForm({ onClose, onSuccess }: NewTeamFormProps) {
         let errorMessage = `HTTP error! status: ${response.status}`;
         
         if (response.status === 400) {
-          // Handle validation errors from backend
           try {
             const errorData = responseText ? JSON.parse(responseText) : null;
             if (errorData?.message) {
               errorMessage = errorData.message;
             } else if (errorData?.errors) {
-              // Extract validation errors
               const validationErrors = errorData.errors.map((err: any) => 
                 `${err.field}: ${err.message}`
               ).join(', ');
@@ -284,7 +303,6 @@ export default function FullTeamForm({ onClose, onSuccess }: NewTeamFormProps) {
         throw new Error(errorMessage);
       }
 
-      // Parse successful response
       let responseData;
       try {
         responseData = responseText ? JSON.parse(responseText) : null;
@@ -300,7 +318,14 @@ export default function FullTeamForm({ onClose, onSuccess }: NewTeamFormProps) {
       }
 
       console.log("Team created successfully:", createdTeam);
-      onSuccess(createdTeam);
+      
+      // Show success toast
+      showSuccessToast(`Team "${createdTeam.name}" created successfully!`);
+      
+      // Call onSuccess after a short delay
+      setTimeout(() => {
+        onSuccess(createdTeam);
+      }, 1000);
       
     } catch (error) {
       console.error("Error creating team:", error);
@@ -312,6 +337,7 @@ export default function FullTeamForm({ onClose, onSuccess }: NewTeamFormProps) {
       }
       
       setErrors({ submit: errorMessage });
+      showErrorToast(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -436,7 +462,7 @@ export default function FullTeamForm({ onClose, onSuccess }: NewTeamFormProps) {
             {/* Member Count */}
             <div className={styles.formGroup}>
               <label htmlFor="memberCount" className={styles.formLabel}>
-                Member Count
+                Max Member Count
               </label>
               <input
                 type="number"
@@ -457,7 +483,7 @@ export default function FullTeamForm({ onClose, onSuccess }: NewTeamFormProps) {
             {/* Total Working Hours */}
             <div className={styles.formGroup}>
               <label htmlFor="totalWorkingHours" className={styles.formLabel}>
-                Total Working Hours/Day
+                Average Working Hours/Day
               </label>
               <input
                 type="number"
@@ -479,7 +505,7 @@ export default function FullTeamForm({ onClose, onSuccess }: NewTeamFormProps) {
             {/* Average Age */}
             <div className={styles.formGroup}>
               <label htmlFor="averageAge" className={styles.formLabel}>
-                Average Age
+                Member's Average Age (Min 18)
               </label>
               <input
                 type="number"
@@ -542,7 +568,7 @@ export default function FullTeamForm({ onClose, onSuccess }: NewTeamFormProps) {
             <button
               type="submit"
               className={styles.btnPrimary}
-              disabled={loading || !supervisor || !formData.employeeId} // Changed to employeeId
+              disabled={loading || !supervisor || !formData.employeeId}
             >
               {loading ? (
                 <>

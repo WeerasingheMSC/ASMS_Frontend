@@ -1,6 +1,7 @@
 "use client"
 
 import Sidebar from "../components/Sidebar"
+import Navbar from "../components/Navbar"
 import { useState, useEffect } from "react"
 import { Button } from "../components/ui/button"  
 import { Card } from "../components/ui/card"
@@ -73,6 +74,7 @@ export default function MyAppointments() {
       <Sidebar activeItem="My Appointments" />
       
       <div className="flex-1 ml-[16.666667%] overflow-auto">
+        <Navbar />
         <div className="p-8">
           {/* Page Header */}
           <div className="mb-8">

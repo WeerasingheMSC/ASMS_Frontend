@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect } from 'react'
 import Sidebar from './components/Sidebar'
+import Navbar from './components/Navbar'
 import { getCustomerAppointments, AppointmentResponse } from '../lib/appointmentsApi'
 
 export default function CustomerDashboard() {
@@ -179,9 +180,10 @@ export default function CustomerDashboard() {
     <div className='flex'>
       <Sidebar activeItem='Dashboard' />
       
-      <div className='flex-1 ml-[16.666667%] p-8 bg-gray-50 min-h-screen'>
-        
-        <div className='mb-8 animate-fade-in-down'>
+      <div className='flex-1 ml-[16.666667%] bg-gray-50 min-h-screen'>
+        <Navbar />
+        <div className='p-8'>
+          <div className='mb-8 animate-fade-in-down'>
           <div className='relative overflow-hidden bg-gradient-to-br from-blue-900 via-blue-900 to-blue-900 p-10 rounded-3xl shadow-2xl'>
             <div className='absolute inset-0 opacity-10'>
               <div className='absolute top-0 left-0 w-32 h-32 bg-white rounded-full -translate-x-16 -translate-y-16'></div>
@@ -481,6 +483,7 @@ export default function CustomerDashboard() {
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }

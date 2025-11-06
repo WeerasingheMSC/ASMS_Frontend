@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { FaLock, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
+import { IoEye, IoEyeOff } from 'react-icons/io5';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -21,6 +22,8 @@ const SetPasswordForm = () => {
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -155,23 +158,23 @@ const SetPasswordForm = () => {
 
   return (
     <div 
-      className="min-h-screen flex items-center justify-center bg-gray-100 px-4 sm:px-6 lg:px-8" 
+      className="min-h-screen flex items-center justify-end bg-gray-100 px-4 sm:px-6 lg:px-8" 
       style={{
         backgroundImage: 'url("/Bg1.png")', 
         backgroundSize: 'cover', 
         backgroundPosition: 'center'
       }}
     >
-      <div className="bg-white/90 backdrop-blur-sm p-6 sm:p-8 md:p-10 rounded-lg shadow-lg w-full max-w-md">
+      <div className="right-0 backdrop-blur-sm p-6 sm:p-8 md:p-10 rounded-lg shadow-lg w-full max-w-md">
         <div className="flex justify-center mb-6">
           <img 
             src="/logo.png" 
             alt="logo" 
-            className="w-20 h-20 rounded-full border-4 border-blue-500"
+            className="w-30 h-30 rounded-full border-4 border-white"
           />
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-bold mb-2 text-center text-gray-800">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-2 text-center text-white">
           Set Your Password
         </h1>
 
@@ -189,7 +192,7 @@ const SetPasswordForm = () => {
           </div>
         )}
 
-        <p className="text-center text-gray-600 mb-6">
+        <p className="text-center text-white mb-6">
           Please create a secure password for your account
         </p>
 
@@ -201,45 +204,65 @@ const SetPasswordForm = () => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="newPassword" className="block text-gray-700 text-sm font-medium mb-2">
+            <label htmlFor="newPassword" className="block text-white font-bold text-sm  mb-2">
               New Password
             </label>
             <div className="relative">
-              <FaLock className="text-gray-400 absolute text-xl top-3 left-3 z-10" />
+              <FaLock className="text-black absolute text-xl top-3 left-3 z-10" />
               <input
                 id="newPassword"
                 name="newPassword"
-                type="password"
+                type={showNewPassword ? "text" : "password"}
                 autoComplete="new-password"
                 required
-                className="w-full pl-10 pr-4 py-3 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                className="w-full pl-10 pr-12 py-3 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                 placeholder="Enter new password"
                 value={formData.newPassword}
                 onChange={handleChange}
                 minLength={6}
               />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                className="absolute right-3 top-3 text-black hover:text-gray-700"
+              >
+                {showNewPassword ? 
+                  <IoEyeOff className="text-xl" /> : 
+                  <IoEye className="text-xl" />
+                }
+              </button>
             </div>
             <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
           </div>
 
           <div>
-            <label htmlFor="confirmPassword" className="block text-gray-700 text-sm font-medium mb-2">
+            <label htmlFor="confirmPassword" className="block text-white  text-sm font-bold mb-2">
               Confirm Password
             </label>
             <div className="relative">
-              <FaLock className="text-gray-400 absolute text-xl top-3 left-3 z-10" />
+              <FaLock className="text-black absolute text-xl top-3 left-3 z-10" />
               <input
                 id="confirmPassword"
                 name="confirmPassword"
-                type="password"
+                type={showConfirmPassword ? "text" : "password"}
                 autoComplete="new-password"
                 required
-                className="w-full pl-10 pr-4 py-3 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                className="w-full pl-10 pr-12 py-3 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                 placeholder="Confirm new password"
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 minLength={6}
               />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-3 text-balck hover:text-gray-700"
+              >
+                {showConfirmPassword ? 
+                  <IoEyeOff className="text-xl" /> : 
+                  <IoEye className="text-xl" />
+                }
+              </button>
             </div>
           </div>
 
@@ -253,9 +276,9 @@ const SetPasswordForm = () => {
         </form>
 
         <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-white">
             Already set your password?{' '}
-            <Link href="/signin" className="font-medium text-blue-600 hover:text-blue-800">
+            <Link href="/signin" className="font-medium !text-blue-600 !hover:text-blue-800">
               Sign in here
             </Link>
           </p>

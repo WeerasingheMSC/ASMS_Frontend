@@ -1,62 +1,45 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import styles from "../employee/employee.module.css";
-import projectsApi from "../lib/projectsApi";
 import Link from 'next/link';
 import { teams as sharedTeams, members as sharedMembers } from "../lib/teamData";
 import { getToken } from '../utils/auth';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
-type Project = {
-  name: string;
-  client: string;
+// ✅ Types matching backend DTOs
+type AppointmentDTO = {
+  id: number;
+  customerId: number;
+  customerName: string;
+  serviceId?: number;
+  serviceName: string;
+  employeeId?: number;
+  employeeName?: string;
+  appointmentDate: string;
   status: string;
-  progress: number;
-  due: string;
+  notes?: string;
 };
 
-const defaultSample: Project[] = [
-  { name: "Client Website Redesign", client: "Innovate Inc.", status: "In Progress", progress: 75, due: "2024-12-15" },
-  { name: "Mobile App Development", client: "Synergy Corp.", status: "Completed", progress: 100, due: "2024-10-30" },
-  { name: "API Integration", client: "Tech Solutions", status: "On Hold", progress: 10, due: "2025-01-20" },
-  { name: "Service Automation", client: "Acme Ltd.", status: "In Progress", progress: 45, due: "2025-02-05" },
-];
+type AppointmentStats = {
+  total: number;
+  confirmed: number;
+  pending: number;
+  cancelled: number;
+  inService: number;
+  completed: number;
+};
 
-function countByStatus(projects: Project[]) {
-  const counts: Record<string, number> = { Completed: 0, "In Progress": 0, "On Hold": 0 };
-  for (const p of projects) {
-    if (p.status === "Completed") counts.Completed++;
-    else if (p.status === "In Progress") counts["In Progress"]++;
-    else counts["On Hold"]++;
-  }
-  return counts;
-}
-
-function WorkloadOverview({ projects: initial }: { projects?: Project[] }) {
-  const [projects, setProjects] = useState<Project[]>(initial || defaultSample);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("asms_projects");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) setProjects(parsed);
-      }
-    } catch (e) {
-      // ignore
-    }
-  }, []);
-
-  const counts = countByStatus(projects);
-  const total = projects.length || 0;
-  const completed = counts.Completed || 0;
-  const inProgress = counts["In Progress"] || 0;
-  const onHold = counts["On Hold"] || 0;
+function WorkloadOverview({ stats }: { stats: AppointmentStats }) {
+  const total = stats.total || 0;
+  const confirmed = stats.confirmed || 0;
+  const inService = stats.inService || 0;
+  const completed = stats.completed || 0;
 
   const circumference = 2 * Math.PI * 60;
   const completedLen = circumference * (total ? completed / total : 0);
-  const inProgressLen = circumference * (total ? inProgress / total : 0);
-  const onHoldLen = circumference * (total ? onHold / total : 0);
+  const inServiceLen = circumference * (total ? inService / total : 0);
+  const confirmedLen = circumference * (total ? confirmed / total : 0);
 
   return (
     <div className={styles.workloadContainer}>
@@ -65,59 +48,95 @@ function WorkloadOverview({ projects: initial }: { projects?: Project[] }) {
           <g transform="rotate(-90 80 80)">
             <circle cx="80" cy="80" r="60" fill="none" stroke="#eef2f7" strokeWidth="14" />
             <circle cx="80" cy="80" r="60" fill="none" stroke="#16a34a" strokeWidth="14" strokeDasharray={`${completedLen} ${circumference - completedLen}`} strokeLinecap="round" />
-            <circle cx="80" cy="80" r="60" fill="none" stroke="#2563eb" strokeWidth="14" strokeDasharray={`${inProgressLen} ${circumference - inProgressLen}`} strokeDashoffset={-completedLen} strokeLinecap="round" />
-            <circle cx="80" cy="80" r="60" fill="none" stroke="#f59e0b" strokeWidth="14" strokeDasharray={`${onHoldLen} ${circumference - onHoldLen}`} strokeDashoffset={-(completedLen + inProgressLen)} strokeLinecap="round" />
+            <circle cx="80" cy="80" r="60" fill="none" stroke="#2563eb" strokeWidth="14" strokeDasharray={`${inServiceLen} ${circumference - inServiceLen}`} strokeDashoffset={-completedLen} strokeLinecap="round" />
+            <circle cx="80" cy="80" r="60" fill="none" stroke="#f59e0b" strokeWidth="14" strokeDasharray={`${confirmedLen} ${circumference - confirmedLen}`} strokeDashoffset={-(completedLen + inServiceLen)} strokeLinecap="round" />
           </g>
         </svg>
 
         <div className={styles.chartCenter}>
-          <div className={styles.chartNumber}>{inProgress}</div>
-          <div className={styles.chartLabel}>Active</div>
+          <div className={styles.chartNumber}>{inService}</div>
+          <div className={styles.chartLabel}>In Service</div>
         </div>
       </div>
 
-        <div className={styles.legendContainer}>
-          <div className={styles.legendItem}>
-            <span className={`${styles.legendDot} ${styles.legendDotCompleted}`} />
-            <div className={styles.legendText}>Completed <span className={styles.legendCount}>({completed})</span></div>
-          </div>
-          <div className={styles.legendItem}>
-            <span className={`${styles.legendDot} ${styles.legendDotInProgress}`} />
-            <div className={styles.legendText}>In Progress <span className={styles.legendCount}>({inProgress})</span></div>
-          </div>
-          <div className={styles.legendItem}>
-            <span className={`${styles.legendDot} ${styles.legendDotOnHold}`} />
-            <div className={styles.legendText}>On Hold <span className={styles.legendCount}>({onHold})</span></div>
-          </div>
+      <div className={styles.legendContainer}>
+        <div className={styles.legendItem}>
+          <span className={`${styles.legendDot} ${styles.legendDotCompleted}`} />
+          <div className={styles.legendText}>Completed <span className={styles.legendCount}>({completed})</span></div>
         </div>
+        <div className={styles.legendItem}>
+          <span className={`${styles.legendDot} ${styles.legendDotInProgress}`} />
+          <div className={styles.legendText}>In Service <span className={styles.legendCount}>({inService})</span></div>
+        </div>
+        <div className={styles.legendItem}>
+          <span className={`${styles.legendDot} ${styles.legendDotOnHold}`} />
+          <div className={styles.legendText}>Confirmed <span className={styles.legendCount}>({confirmed})</span></div>
+        </div>
+      </div>
     </div>
   );
 }
 
 export default function EmployeeDashboardPage() {
-  const [projectsData, setProjectsData] = useState<Project[]>(defaultSample);
   const [backendTeams, setBackendTeams] = useState<any[]>([]);
   const [backendMembers, setBackendMembers] = useState<any[]>([]);
   const [backendTeamStats, setBackendTeamStats] = useState<any[]>([]);
+  
+  // ✅ State for appointments and stats
+  const [appointments, setAppointments] = useState<AppointmentDTO[]>([]);
+  const [loadingAppointments, setLoadingAppointments] = useState(true);
+  const [appointmentStats, setAppointmentStats] = useState<AppointmentStats>({
+    total: 0,
+    confirmed: 0,
+    pending: 0,
+    cancelled: 0,
+    inService: 0,
+    completed: 0
+  });
 
-  useEffect(() => {
-    let mounted = true;
-    projectsApi.fetchProjects().then((data) => {
-      if (!mounted) return;
-      if (data && data.length > 0) setProjectsData(data as Project[]);
-    }).catch(() => {
-      // ignore - keep defaults or localStorage fallback handled in helper
-    });
-    return () => { mounted = false; };
-  }, []);
-
-  // fetch backend teams/members/stats to show live team overview when available
+  // ✅ Fetch appointments and calculate stats from backend
   useEffect(() => {
     let mounted = true;
     const token = getToken();
-    if (!token) return;
+    if (!token) {
+      setLoadingAppointments(false);
+      return;
+    }
 
     (async () => {
+      // ✅ Fetch appointments
+      try {
+        const appointmentsResp = await fetch(`${API_URL}/api/employee/appointments`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (appointmentsResp.ok) {
+          const appointmentsData = await appointmentsResp.json();
+          if (mounted) {
+            const apts = Array.isArray(appointmentsData) ? appointmentsData : [];
+            setAppointments(apts);
+            
+            // ✅ Calculate stats from appointments
+            const stats: AppointmentStats = {
+              total: apts.length,
+              confirmed: apts.filter((a: AppointmentDTO) => a.status === 'CONFIRMED').length,
+              pending: apts.filter((a: AppointmentDTO) => a.status === 'PENDING').length,
+              cancelled: apts.filter((a: AppointmentDTO) => a.status === 'CANCELLED').length,
+              inService: apts.filter((a: AppointmentDTO) => a.status === 'IN_SERVICE').length,
+              completed: apts.filter((a: AppointmentDTO) => a.status === 'COMPLETED').length,
+            };
+            setAppointmentStats(stats);
+          }
+        }
+      } catch (e) {
+        console.error('Error fetching appointments:', e);
+      } finally {
+        if (mounted) setLoadingAppointments(false);
+      }
+
+      // ✅ Keep existing team fetches
       try {
         const tResp = await fetch(`${API_URL}/api/employee/teams/all`, { headers: { Authorization: `Bearer ${token}` } });
         if (tResp.ok) {
@@ -142,8 +161,12 @@ export default function EmployeeDashboardPage() {
           const mData = await mResp.json();
           if (!mounted) return;
           const rawMembers = Array.isArray(mData) ? mData : (mData.data || []);
-          // normalize minimal fields
-          const members = rawMembers.map((m: any) => ({ id: m.id ?? m.employeeId ?? m.userId, name: m.fullName || m.name || `${m.firstName || ''} ${m.lastName || ''}`.trim(), team: m.team || m.teamName || m.team_name, productivity: m.productivity ?? m.productivityScore ?? null }));
+          const members = rawMembers.map((m: any) => ({
+            id: m.id ?? m.employeeId ?? m.userId,
+            name: m.fullName || m.name || `${m.firstName || ''} ${m.lastName || ''}`.trim(),
+            team: m.team || m.teamName || m.team_name,
+            productivity: m.productivity ?? m.productivityScore ?? null
+          }));
           setBackendMembers(members);
         }
       } catch (e) {}
@@ -152,65 +175,9 @@ export default function EmployeeDashboardPage() {
     return () => { mounted = false; };
   }, []);
 
-  const inProgressProjects = projectsData.filter((p) => p.status === "In Progress");
-  const inProgressCount = inProgressProjects.length;
-  const totalProjects = projectsData.length || 0;
-  // percent of projects that are In Progress (out of all projects)
-  const percentInProgress = totalProjects ? Math.round((inProgressCount / totalProjects) * 100) : 0;
-
-  // dashboard status counts
-  const statusCounts = countByStatus(projectsData);
-  const dashboardCompleted = statusCounts.Completed || 0;
-  const dashboardInProgress = statusCounts["In Progress"] || 0;
-  const dashboardOnHold = statusCounts["On Hold"] || 0;
-
-  useEffect(() => {
-    // listen for updates from other components that write to localStorage
-    function handleUpdate() {
-      try {
-        const raw = localStorage.getItem("asms_projects");
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) setProjectsData(parsed as Project[]);
-        }
-      } catch (e) {
-        // ignore
-      }
-    }
-
-    window.addEventListener("asms_projects_updated", handleUpdate);
-    // also listen to storage events for cross-tab updates
-    function onStorage(e: StorageEvent) {
-      if (e.key === "asms_projects") handleUpdate();
-    }
-    window.addEventListener("storage", onStorage);
-
-    return () => {
-      window.removeEventListener("asms_projects_updated", handleUpdate);
-      window.removeEventListener("storage", onStorage);
-    };
-  }, []);
-
-  // helper to normalize different due date formats to YYYY-MM-DD
-  function normalizeToISO(d: string) {
-    if (!d) return null;
-    // if already in YYYY-MM-DD form
-    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
-    // try parsing other common formats
-    const parsed = new Date(d);
-    if (!isNaN(parsed.getTime())) {
-      const y = parsed.getFullYear();
-      const m = String(parsed.getMonth() + 1).padStart(2, "0");
-      const day = String(parsed.getDate()).padStart(2, "0");
-      return `${y}-${m}-${day}`;
-    }
-    return null;
-  }
-
   function normalizeDateDisplay(d: string) {
-    const iso = normalizeToISO(d);
-    if (!iso) return d || "";
-    const parsed = new Date(iso);
+    if (!d) return "";
+    const parsed = new Date(d);
     return parsed.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
   }
 
@@ -220,269 +187,249 @@ export default function EmployeeDashboardPage() {
   ).padStart(2, "0")}`;
   const todayDisplay = today.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 
-  const scheduledToday = projectsData.filter((p) => {
-    const iso = normalizeToISO(p.due);
-    return iso === todayISO && p.status !== "Completed";
+  // ✅ Filter today's appointments
+  const todayAppointments = appointments.filter((apt) => {
+    const aptDate = new Date(apt.appointmentDate);
+    const aptISO = `${aptDate.getFullYear()}-${String(aptDate.getMonth() + 1).padStart(2, "0")}-${String(aptDate.getDate()).padStart(2, "0")}`;
+    return aptISO === todayISO;
   });
 
   return (
     <div className="space-y-6">
-        <header className="mb-4">
-          <h1 className="text-2xl font-bold">Welcome !</h1>
-          <p className="text-gray-500 mt-1">Manage your tasks and appointments.</p>
-        </header>
-  <section className="grid grid-cols-2 gap-6">
-    <div className={`col-span-1 bg-white p-6 rounded-lg shadow-sm ${styles.projectsCard}`}>
-          <div className="flex items-start justify-between mb-4">
-            <h2 className="text-xl font-semibold">My Projects</h2>
-            <a href="/employee/projects" className="text-sm text-blue-600">View All</a>
+      <header className="mb-4">
+        <h1 className="text-2xl font-bold">Welcome!</h1>
+        <p className="text-gray-500 mt-1">Manage your appointments and tasks.</p>
+      </header>
+
+      {/* ✅ My Appointments Section */}
+      <section className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl shadow-sm border border-blue-100">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              My Appointments
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">Appointments assigned to you</p>
           </div>
-
-          {/* Summary for In Progress projects (aggregate percentage) */}
-          <div className={styles.summaryRow}>
-            <div className={styles.summaryLeft}>
-                <div className={styles.summaryTitle}>In Progress</div>
-              <div className={styles.summaryCount}>{inProgressCount} project{inProgressCount !== 1 ? "s" : ""}</div>
-            </div>
-
-            <div className={styles.summaryRight}>
-              <div className={styles.progressBarWrapper}>
-                {/* Dynamic width requires inline style - progress percentage is calculated at runtime */}
-                <div className={styles.progressBarTrack}>
-                  {/* @ts-expect-error CSS custom property for dynamic value */}
-                  <div className={styles.progressBarFill} style={{ '--progress-percentage': percentInProgress }} />
-                </div>
-                <div className={styles.progressBarLabel}>{percentInProgress}% In Progress</div>
-              </div>
-            </div>
-          </div>
-
-          <ul className={`${styles.myProjects} space-y-4`}>
-            {inProgressProjects.length === 0 ? (
-              <li className={styles.projectItem}>
-                <div className={styles.noProjects}>No projects in progress</div>
-              </li>
-            ) : (
-              inProgressProjects.map((p) => (
-                <li key={p.name} className={styles.projectItem}>
-                  <div className={styles.projectLeft}>
-                    <div className={`${styles.iconBox} ${styles.iconBoxInProgress}`}>
-                      {/* simple status glyph */}
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 12h18" stroke="#047857" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    </div>
-                    <div className={"project-meta"}>
-                      <div className="title">{p.name}</div>
-                      <div className="client">Client: {p.client}</div>
-                    </div>
-                  </div>
-                  <div className={styles.projectRight}>
-                    {/* due date kept optional; if you previously removed due dates, we can hide this */}
-                    <div className={styles.dueDate}>{p.due}</div>
-                  </div>
-                </li>
-              ))
-            )}
-          </ul>
+          <Link href="/employee/appointments" className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline">
+            View All ({appointments.length})
+          </Link>
         </div>
 
-  <div className="col-span-1 bg-white p-6 rounded-lg shadow-sm">
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <h3 className={`${styles.cardHeading} text-base`}>Today's Schedule</h3>
-              <div className={styles.scheduleDate}>{todayDisplay}</div>
-            </div>
-            <a href="/employee/projects" className="text-sm text-blue-600">View All</a>
+        {loadingAppointments ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
-
-          <ul className={`${styles.scheduleList} space-y-4`}> 
-            {scheduledToday.length === 0 ? (
-              <li className={styles.scheduleItem}>
-                <div className={styles.scheduleLeft}>
-                  <div className={styles.noProjects}>No projects scheduled for today</div>
-                </div>
-              </li>
-            ) : (
-              scheduledToday.map((p) => (
-                <li key={p.name} className={styles.scheduleItem}>
-                  <div className={styles.scheduleLeft}>
-                    <span className={`${styles.dot} ${styles.dotBlue}`} />
-                    <div>
-                      <div className={styles.eventTime}>Due: {normalizeDateDisplay(p.due)}</div>
-                      <div className={styles.eventTitle}>{p.name}</div>
-                      <div className={styles.eventClient}>Client: {p.client}</div>
-                    </div>
-                  </div>
-                </li>
-              ))
-            )}
-          </ul>
-        </div>
-      
+        ) : appointments.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-lg">
+            <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <p className="text-gray-500 font-medium">No appointments assigned yet</p>
+            <p className="text-sm text-gray-400 mt-1">Check back later for new assignments</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Service</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {appointments.slice(0, 5).map((apt) => (
+                  <tr key={apt.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{apt.customerName}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{apt.serviceName}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      {new Date(apt.appointmentDate).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                        apt.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :
+                        apt.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                        apt.status === 'IN_SERVICE' ? 'bg-blue-100 text-blue-800' :
+                        apt.status === 'COMPLETED' ? 'bg-green-200 text-green-900' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {apt.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
-      {/* Dashboard summary cards (matches style of customer page) */}
+      {/* ✅ Today's Schedule */}
+      <section className="bg-white p-6 rounded-lg shadow-sm">
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <h3 className="text-lg font-semibold">Today's Schedule</h3>
+            <div className="text-sm text-gray-500 mt-1">{todayDisplay}</div>
+          </div>
+        </div>
+
+        <ul className="space-y-3">
+          {todayAppointments.length === 0 ? (
+            <li className="text-center py-8 text-gray-500">
+              <svg className="w-12 h-12 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              No appointments scheduled for today
+            </li>
+          ) : (
+            todayAppointments.map((apt) => (
+              <li key={apt.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-gray-900">{apt.serviceName}</div>
+                  <div className="text-xs text-gray-600 mt-0.5">{apt.customerName}</div>
+                  <div className="text-xs text-gray-500 mt-0.5">
+                    {new Date(apt.appointmentDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                  <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                    apt.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :
+                    apt.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                    apt.status === 'IN_SERVICE' ? 'bg-blue-100 text-blue-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {apt.status}
+                  </span>
+                </div>
+              </li>
+            ))
+          )}
+        </ul>
+      </section>
+
+      {/* ✅ Dashboard Stats - From Backend */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className='bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow'>
+        <div className='bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl shadow-sm hover:shadow-md transition-all border border-blue-200'>
           <div className='flex items-center justify-between mb-4'>
-            <h3 className='text-lg font-semibold text-gray-800'>In Progress</h3>
-            <div className='bg-blue-100 p-3 rounded-full'>
-              <svg className='w-6 h-6 text-blue-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' />
+            <h3 className='text-lg font-semibold text-blue-900'>In Service</h3>
+            <div className='bg-blue-500 p-3 rounded-full shadow-sm'>
+              <svg className='w-6 h-6 text-white' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M13 10V3L4 14h7v7l9-11h-7z' />
               </svg>
             </div>
           </div>
-          <p className='text-gray-600 mb-2'>Active projects</p>
+          <p className='text-blue-700 mb-2 font-medium'>Active work</p>
           <div>
-            <span className='text-2xl font-bold text-blue-600'>{dashboardInProgress}</span>
-            <span className='text-gray-500 ml-2'>projects</span>
+            <span className='text-3xl font-bold text-blue-900'>{appointmentStats.inService}</span>
+            <span className='text-blue-600 ml-2 text-sm'>appointments</span>
           </div>
         </div>
 
-        <div className='bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow'>
+        <div className='bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl shadow-sm hover:shadow-md transition-all border border-green-200'>
           <div className='flex items-center justify-between mb-4'>
-            <h3 className='text-lg font-semibold text-gray-800'>Completed</h3>
-            <div className='bg-green-100 p-3 rounded-full'>
-              <svg className='w-6 h-6 text-green-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M20 6L9 17l-5-5' />
+            <h3 className='text-lg font-semibold text-green-900'>Completed</h3>
+            <div className='bg-green-500 p-3 rounded-full shadow-sm'>
+              <svg className='w-6 h-6 text-white' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' />
               </svg>
             </div>
           </div>
-          <p className='text-gray-600 mb-2'>Finished projects</p>
+          <p className='text-green-700 mb-2 font-medium'>Finished</p>
           <div>
-            <span className='text-2xl font-bold text-green-600'>{dashboardCompleted}</span>
-            <span className='text-gray-500 ml-2'>projects</span>
+            <span className='text-3xl font-bold text-green-900'>{appointmentStats.completed}</span>
+            <span className='text-green-600 ml-2 text-sm'>appointments</span>
           </div>
         </div>
 
-        <div className='bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow'>
+        <div className='bg-gradient-to-br from-yellow-50 to-yellow-100 p-6 rounded-xl shadow-sm hover:shadow-md transition-all border border-yellow-200'>
           <div className='flex items-center justify-between mb-4'>
-            <h3 className='text-lg font-semibold text-gray-800'>On Hold</h3>
-            <div className='bg-yellow-100 p-3 rounded-full'>
-              <svg className='w-6 h-6 text-yellow-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+            <h3 className='text-lg font-semibold text-yellow-900'>Confirmed</h3>
+            <div className='bg-yellow-500 p-3 rounded-full shadow-sm'>
+              <svg className='w-6 h-6 text-white' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
                 <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' />
               </svg>
             </div>
           </div>
-          <p className='text-gray-600 mb-2'>Paused projects</p>
+          <p className='text-yellow-700 mb-2 font-medium'>Scheduled</p>
           <div>
-            <span className='text-2xl font-bold text-yellow-600'>{dashboardOnHold}</span>
-            <span className='text-gray-500 ml-2'>projects</span>
+            <span className='text-3xl font-bold text-yellow-900'>{appointmentStats.confirmed}</span>
+            <span className='text-yellow-600 ml-2 text-sm'>appointments</span>
           </div>
         </div>
       </div>
 
-      {/* Workload Overview and Team Overview side-by-side */}
-      <div className="flex flex-col md:flex-row md:items-start md:space-x-4">
-        <div className={`flex-1 bg-white p-4 rounded-lg shadow-sm ${styles.workloadSection}`}>
-          <h3 className="font-semibold mb-3">Workload Overview</h3>
-          <WorkloadOverview />
+      {/* ✅ Workload Overview and Team Overview */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <h3 className="text-lg font-semibold mb-4 text-gray-900">Workload Overview</h3>
+          <WorkloadOverview stats={appointmentStats} />
         </div>
 
-  <div className="w-full md:w-2/3 bg-white p-6 rounded-lg shadow-sm mt-4 md:mt-0">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold">Team Overview</h3>
-            <Link href="/employee/team_analysis" className="text-sm text-blue-600">View all</Link>
+        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Team Overview</h3>
+            <Link href="/employee/team_analysis" className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline">
+              View All
+            </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {(() => {
-              // Build teams list: prefer backendTeams, then sharedTeams, then derive from projects
-              const teamsList: any[] = (backendTeams && backendTeams.length > 0)
-                ? backendTeams
-                : (sharedTeams && sharedTeams.length > 0)
-                  ? sharedTeams.filter((t:any)=> t.id !== 'all')
-                  : Array.from(new Set(projectsData.map((p:any) => (p.teamName || p.team || '').trim()).filter(Boolean))).map((name:any) => ({ id: name, name }));
-
-              return teamsList.map((t:any) => {
-                const teamName = t.name || t.teamName || t;
-
-                // members: prefer backendMembers then sharedMembers
-                const membersOfTeam = (backendMembers && backendMembers.length>0)
-                  ? backendMembers.filter((m:any)=> String((m.team||m.teamName||'')).trim() === String(teamName).trim())
-                  : (sharedMembers && sharedMembers.length>0)
-                    ? sharedMembers.filter((m:any) => String(m.team).trim() === String(teamName).trim())
-                    : [];
-
-                const membersCount = membersOfTeam.length || (t.totalMembers ?? 0);
-
-                const projectsOfTeam = projectsData.filter((p:any) => (String((p as any).teamName || p.team || '').trim()) === String(teamName).trim()).length;
-
-                // prefer backend team stats when available
-                let avgProd = 0;
-                const stat = backendTeamStats.find((s:any)=> {
-                  const sName = String(s.teamName || s.team_name || s.name || '').trim();
-                  return sName && sName === String(teamName).trim() || String(s.teamId || s.team_id || s.id || '').trim() === String(t.id || '').trim();
-                });
-
-                if (stat) {
-                  avgProd = Number(stat.averageProductivity ?? stat.avgProductivity ?? stat.avg ?? stat.average ?? stat.productivity ?? 0) || 0;
-                } else if (membersOfTeam && membersOfTeam.length > 0) {
-                  const total = membersOfTeam.reduce((acc:any, m:any) => acc + (Number(m.productivity) || 0), 0);
-                  avgProd = membersOfTeam.length ? Math.round(total / membersOfTeam.length) : 0;
-                } else {
-                  // fallback: compute from average project progress for this team
-                  const teamProjects = projectsData.filter((p:any) => (String((p as any).teamName || p.team || '').trim()) === String(teamName).trim());
-                  if (teamProjects.length > 0) {
-                    const totalProgress = teamProjects.reduce((acc:any, p:any) => acc + (Number(p.progress) || 0), 0);
-                    avgProd = Math.round(totalProgress / teamProjects.length);
-                  } else {
-                    // No team-specific projects found — fall back to global average project progress so the dashboard shows a meaningful percentage
-                    const allProjectsWithProgress = projectsData.filter((p:any) => typeof p.progress === 'number');
-                    if (allProjectsWithProgress.length > 0) {
-                      const totalProgress = allProjectsWithProgress.reduce((acc:any, p:any) => acc + (Number(p.progress) || 0), 0);
-                      avgProd = Math.round(totalProgress / allProjectsWithProgress.length);
-                    } else {
-                      // No progress data available; display 0 as a safe default
-                      avgProd = 0;
-                    }
-                  }
-                }
-
-                // sanitize and clamp between 0-100
-                avgProd = Math.max(0, Math.min(100, Math.round(Number(avgProd) || 0)));
-
-                let fillClass = 'bg-orange-400';
-                if (avgProd >= 95) fillClass = 'bg-green-500';
-                else if (avgProd >= 90) fillClass = 'bg-teal-500';
-                else if (avgProd >= 85) fillClass = 'bg-yellow-400';
-
-                const linkTarget = `/employee/team_analysis?team=${encodeURIComponent(teamName)}`;
-
-                return (
-                  <Link
-                    key={t.id || teamName}
-                    href={linkTarget}
-                    className="block"
-                    aria-label={`View ${teamName} details`}
-                  >
-                    <div className="bg-white p-6 rounded-md shadow-sm hover:shadow-lg transition-shadow cursor-pointer">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <div className="text-sm font-medium text-gray-800">{teamName}</div>
-                          <div className="text-xs text-gray-500">{membersCount} members • {projectsOfTeam} projects</div>
-                        </div>
-                        <div className="text-sm font-semibold text-gray-700 ml-2">{avgProd}%</div>
-                      </div>
-
-                      <div className="mt-3">
-                        <div className="w-full bg-gray-100 h-3 rounded overflow-hidden">
-                          <div className={`${fillClass} h-3`} style={{ width: `${avgProd}%` }} />
-                        </div>
-                      </div>
-
-                      <div className="mt-3 flex items-center justify-between">
-                        <span className="text-xs text-gray-500">Productivity</span>
-                      </div>
-                    </div>
-                  </Link>
-                );
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {backendTeams.slice(0, 6).map((t) => {
+              const teamName = t.name || t.teamName || '';
+              const membersOfTeam = backendMembers.filter(m => 
+                String(m.team || m.teamName || '').trim() === String(teamName).trim()
+              );
+              const membersCount = membersOfTeam.length || t.totalMembers || 0;
+              
+              const stat = backendTeamStats.find(s => {
+                const sName = String(s.teamName || s.team_name || s.name || '').trim();
+                return sName === String(teamName).trim();
               });
-            })()}
+              
+              let avgProd = 0;
+              if (stat) {
+                avgProd = Number(stat.averageProductivity ?? stat.avgProductivity ?? stat.productivity ?? 0) || 0;
+              } else if (membersOfTeam.length > 0) {
+                const total = membersOfTeam.reduce((acc, m) => acc + (Number(m.productivity) || 0), 0);
+                avgProd = Math.round(total / membersOfTeam.length);
+              }
+              
+              avgProd = Math.max(0, Math.min(100, Math.round(avgProd)));
+              
+              let fillClass = 'bg-orange-400';
+              if (avgProd >= 95) fillClass = 'bg-green-500';
+              else if (avgProd >= 90) fillClass = 'bg-teal-500';
+              else if (avgProd >= 85) fillClass = 'bg-yellow-400';
+
+              return (
+                <Link
+                  key={t.id || teamName}
+                  href={`/employee/team_analysis?team=${encodeURIComponent(teamName)}`}
+                  className="block p-4 rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-900 truncate">{teamName}</div>
+                      <div className="text-xs text-gray-500 mt-1">{membersCount} members</div>
+                    </div>
+                    <div className="text-sm font-bold text-gray-700 ml-2">{avgProd}%</div>
+                  </div>
+                  
+                  <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                    <div className={`${fillClass} h-2 transition-all duration-300`} style={{ width: `${avgProd}%` }} />
+                  </div>
+                  
+                  <div className="mt-2 text-xs text-gray-500">Productivity</div>
+                </Link>
+              );
+            })}
           </div>
         </div>
       </div>
     </div>
   );
 }
-
 

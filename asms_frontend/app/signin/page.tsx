@@ -21,52 +21,69 @@ const page = () => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  try {
-    const response = await fetch(`${API_URL}/api/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        username: formData.username,
-        password: formData.password
-      }),
-    });
+    try {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
 
-    if (!response.ok) {
-      const errorResult = await response.json().catch(() => ({ message: 'Unknown error occurred' }));
-      alert(errorResult.message || 'Login failed');
-      return;
+      if (response.ok) {
+        const result = await response.json();
+        // Store user info in localStorage
+        localStorage.setItem('user', JSON.stringify(result));
+
+        // determine redirect path from returned user/roles
+        const determineRedirect = (user: any) => {
+          const roles: string[] = [];
+          if (!user) return '/Admin';
+          // single role string
+          if (typeof user.role === 'string' && user.role) roles.push(user.role);
+          // roles as array (strings or objects)
+          if (Array.isArray(user.roles)) {
+            user.roles.forEach((r: any) => {
+              if (!r) return;
+              if (typeof r === 'string') roles.push(r);
+              else if (r.authority) roles.push(r.authority);
+              else if (r.name) roles.push(r.name);
+            });
+          }
+          // authorities array (common in some backends)
+          if (Array.isArray(user.authorities)) {
+            user.authorities.forEach((a: any) => {
+              if (!a) return;
+              if (typeof a === 'string') roles.push(a);
+              else if (a.authority) roles.push(a.authority);
+              else if (a.name) roles.push(a.name);
+            });
+          }
+          // other possible fields
+          if (user.type) roles.push(String(user.type));
+          if (user.userType) roles.push(String(user.userType));
+
+          const normalized = roles.map(r => String(r).toUpperCase());
+          if (normalized.some(r => r.includes('ADMIN'))) return '/Admin';
+          if (normalized.some(r => r.includes('MECHANIC') || r.includes('EMPLOYEE') || r.includes('STAFF'))) return '/employee';
+          if (normalized.some(r => r.includes('CUSTOMER') || r.includes('USER'))) return '/customer';
+
+          // fallback - keep previous behavior
+          return '/Admin';
+        };
+
+        window.location.href = determineRedirect(result);
+      } else {
+        const errorResult = await response.json().catch(() => ({ message: 'Unknown error occurred' }));
+        alert(errorResult.message || 'Login failed');
+      }
+    } catch (error) {
+      console.error('Error during sign in:', error);
+      alert('Network error. Please check if the backend is running.');
     }
-
-    const result = await response.json();
-
-    // Save user to localStorage
-    localStorage.setItem('user', JSON.stringify(result));
-
-    // Redirect based on role
-    switch (result.role) {
-      case "ADMIN":
-        window.location.href = "/Admin";
-        break;
-      case "CUSTOMER":
-        window.location.href = "/customer";
-        break;
-      case "EMPLOYEE":
-        window.location.href = "/employee";
-        break;
-      default:
-        alert("Invalid role. Contact system admin.");
-        break;
-    }
-
-  } catch (error) {
-    console.error('Error during sign in:', error);
-    alert('Network error. Please check if the backend is running.');
-  }
-};
+  };
 
 
   const [showpassword, setShowPassword] = useState(false);
@@ -130,7 +147,7 @@ const page = () => {
             </div>
 
             <div className="text-sm sm:text-base">
-              <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
+              <a href="#" className="font-medium !text-blue-600 hover:!text-blue-400 underline">
                 Forgot password?
               </a>
             </div>
@@ -146,7 +163,7 @@ const page = () => {
           <div className="text-center">
             <p className="text-sm sm:text-base text-gray-200">
               Don&apos;t have an account?{' '}
-              <Link href="/signup" className="font-medium text-blue-600 hover:text-blue-500">
+              <Link href="/signup" className="font-medium !text-blue-600 hover:!text-blue-400 underline">
                 Sign up here
               </Link>
             </p>

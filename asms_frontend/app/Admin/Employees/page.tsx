@@ -378,7 +378,7 @@ const EmployeesPage = () => {
           <h1 className='text-3xl font-bold text-blue-900'>Employee Management</h1>
           <button
             onClick={() => setIsPopupOpen(true)}
-            className='bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-md'
+            className='bg-blue-800 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-md'
           >
             + Add New Employee
           </button>
@@ -432,7 +432,7 @@ const EmployeesPage = () => {
             <Tooltip title={selectedRows.length > 0 ? `Export ${selectedRows.length} selected rows to CSV` : 'Export all filtered data to CSV'}>
               <button
                 onClick={handleExportCSV}
-                className='bg-green-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-600 transition-colors shadow-md flex items-center gap-2 whitespace-nowrap'
+                className='bg-green-700 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-600 transition-colors shadow-md flex items-center gap-2 whitespace-nowrap'
               >
                 <FileDownloadIcon />
                 Export to CSV

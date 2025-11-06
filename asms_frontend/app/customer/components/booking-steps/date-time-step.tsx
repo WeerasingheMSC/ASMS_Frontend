@@ -60,23 +60,34 @@ export default function DateTimeStep({ data, onNext, onBack }: DateTimeStepProps
     return date < today
   }
 
-  const isToday = (day: number) => {
-    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
-    return date.getTime() === today.getTime()
-  }
+const isToday = (day: number) => {
+  const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
+  return date.toDateString() === today.toDateString()
+}
 
-  const isSelected = (day: number) => {
-    if (!formData.date) return false
-    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
-    const selectedDate = new Date(formData.date)
-    return date.getTime() === selectedDate.getTime()
-  }
+const isSelected = (day: number) => {
+  if (!formData.date) return false
+  const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
+  const selectedDate = new Date(formData.date + "T00:00:00")
+  return date.toDateString() === selectedDate.toDateString()
+}
+
 
   const handleDateSelect = (day: number) => {
     if (!isDateDisabled(day)) {
       const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
-      setFormData({ ...formData, date: date.toISOString().split("T")[0] })
+      // Format as YYYY-MM-DD (SQL DATE format for backend)
+      // const formattedDate = date.toISOString().split("T")[0]
+      const formattedDate = date.toLocaleDateString("en-CA") // gives YYYY-MM-DD in local time
+      console.log('Date selected:', formattedDate) // Debug log
+      setFormData({ ...formData, date: formattedDate })
     }
+  }
+
+  const handleTimeSelect = (timeSlot: string) => {
+    // Ensure time is in correct format for backend (HH:MM AM/PM)
+    console.log('Time selected:', timeSlot) // Debug log
+    setFormData({ ...formData, time: timeSlot })
   }
 
   const prevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))
@@ -149,7 +160,7 @@ export default function DateTimeStep({ data, onNext, onBack }: DateTimeStepProps
               return (
                 <button
                   key={slot}
-                  onClick={() => !isBooked && setFormData({ ...formData, time: slot })}
+                  onClick={() => !isBooked && handleTimeSelect(slot)}
                   disabled={isBooked}
                   className={`p-3 rounded-lg font-medium transition-colors ${
                     isBooked

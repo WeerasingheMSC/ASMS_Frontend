@@ -6,6 +6,7 @@ import VehicleStep from "./booking-steps/vehicle-step"
 import ServiceStep from "./booking-steps/service-step"
 import DateTimeStep from "./booking-steps/date-time-step"
 import ConfirmationStep from "./booking-steps/confirmation-step"
+import { createAppointment } from "../../lib/appointmentsApi"
 
 interface BookingWizardProps {
   onClose: () => void
@@ -72,27 +73,27 @@ export default function BookingWizard({ onClose }: BookingWizardProps) {
     setStep(step - 1)
   }
 
-  const handleConfirm = async () => {
-    try {
-      const response = await fetch("/api/bookings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      })
+  const [isLoading, setIsLoading] = useState(false)
 
-      if (!response.ok) {
-        throw new Error("Failed to create booking")
+  const handleConfirm = async () => {
+    setIsLoading(true)
+    try {
+      const appointmentData = {
+        vehicle: formData.vehicle,
+        service: formData.service,
+        datetime: formData.datetime,
       }
 
-      const result = await response.json()
+      const result = await createAppointment(appointmentData)
       console.log("Booking confirmed:", result)
       alert("Appointment booked successfully!")
       onClose()
     } catch (error) {
       console.error("Error:", error)
-      alert("Failed to book appointment. Please try again.")
+      const errorMessage = error instanceof Error ? error.message : "Failed to book appointment. Please try again."
+      alert(errorMessage)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -129,7 +130,7 @@ export default function BookingWizard({ onClose }: BookingWizardProps) {
           
           {/* Active Progress Bar */}
           <div 
-            className="absolute top-5 left-0 h-1 bg-gradient-to-r from-primary to-primary-600 rounded-full transition-all duration-500"
+            className="absolute top-5 left-0 h-1 bg-gradient-to-r from-gray-600 to-primary-600 rounded-full transition-all duration-500"
             style={{ width: `${((step - 1) / 3) * 100}%` }}
           />
 
@@ -147,8 +148,8 @@ export default function BookingWizard({ onClose }: BookingWizardProps) {
                       status === "completed"
                         ? "bg-green-500 text-white scale-105"
                         : status === "active"
-                          ? "bg-primary text-white scale-110 shadow-lg ring-4 ring-primary/20"
-                          : "bg-white text-gray-400 border-2 border-gray-200"
+                          ? "bg-gray-600 text-white scale-110 shadow-lg ring-4 ring-primary/20"
+                          : "bg-white text-gray-00 border-2 border-gray-200"
                     }`}
                   >
                     {status === "completed" ? (
@@ -162,7 +163,7 @@ export default function BookingWizard({ onClose }: BookingWizardProps) {
                   <span
                     className={`mt-2 text-xs font-medium transition-colors ${
                       status === "active"
-                        ? "text-foreground"
+                        ? "text-black"
                         : status === "completed"
                           ? "text-green-600"
                           : "text-muted-foreground"
@@ -185,7 +186,13 @@ export default function BookingWizard({ onClose }: BookingWizardProps) {
             {step === 2 && <ServiceStep data={formData.service} onNext={handleNext} onBack={handleBack} />}
             {step === 3 && <DateTimeStep data={formData.datetime} onNext={handleNext} onBack={handleBack} />}
             {step === 4 && (
-              <ConfirmationStep data={formData} onConfirm={handleConfirm} onBack={handleBack} onCancel={onClose} />
+              <ConfirmationStep 
+                data={formData} 
+                onConfirm={handleConfirm} 
+                onBack={handleBack} 
+                onCancel={onClose}
+                isLoading={isLoading}
+              />
             )}
           </div>
         </div>

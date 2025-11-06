@@ -9,9 +9,10 @@ interface ConfirmationStepProps {
   onConfirm: () => void
   onBack: () => void
   onCancel: () => void
+  isLoading?: boolean
 }
 
-export default function ConfirmationStep({ data, onConfirm, onBack, onCancel }: ConfirmationStepProps) {
+export default function ConfirmationStep({ data, onConfirm, onBack, onCancel, isLoading = false }: ConfirmationStepProps) {
   const appointmentDate = new Date(data.datetime.date)
   const dateStr = appointmentDate.toLocaleDateString("en-US", {
     weekday: "long",
@@ -106,14 +107,28 @@ export default function ConfirmationStep({ data, onConfirm, onBack, onCancel }: 
 
       {/* Buttons */}
       <div className="flex gap-4 mt-8">
-        <Button onClick={onCancel} variant="outline" className="flex-1 bg-transparent text-black border border-gray-300">
+        <Button 
+          onClick={onCancel} 
+          variant="outline" 
+          className="flex-1 bg-transparent text-black border border-gray-300"
+          disabled={isLoading}
+        >
           Cancel
         </Button>
-        <Button onClick={onBack} variant="outline" className="flex-1 bg-transparent text-black border border-gray-300">
+        <Button 
+          onClick={onBack} 
+          variant="outline" 
+          className="flex-1 bg-transparent text-black border border-gray-300"
+          disabled={isLoading}
+        >
           Back
         </Button>
-        <Button onClick={onConfirm} className="flex-1 bg-green-600 hover:bg-green-700 text-white">
-          Confirm Booking
+        <Button 
+          onClick={onConfirm} 
+          className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={isLoading}
+        >
+          {isLoading ? "Creating Appointment..." : "Confirm Booking"}
         </Button>
       </div>
     </Card>

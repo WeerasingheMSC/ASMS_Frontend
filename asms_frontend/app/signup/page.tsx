@@ -239,7 +239,7 @@ const SignUpForm = () => {
           <div className="text-center">
             <p className="text-sm sm:text-base text-gray-200">
               Already have an account?{' '}
-              <Link href="/signin" className="font-medium text-blue-400 hover:text-blue-300">
+              <Link href="/signin" className="font-medium !text-blue-400 !hover:text-blue-300">
                 Sign in here
               </Link>
             </p>

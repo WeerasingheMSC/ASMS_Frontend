@@ -2,6 +2,10 @@
 import React, { useEffect, useState } from "react";
 import styles from "../employee/employee.module.css";
 import projectsApi from "../lib/projectsApi";
+import Link from 'next/link';
+import { teams as sharedTeams, members as sharedMembers } from "../lib/teamData";
+import { getToken } from '../utils/auth';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 type Project = {
   name: string;
@@ -92,6 +96,9 @@ function WorkloadOverview({ projects: initial }: { projects?: Project[] }) {
 
 export default function EmployeeDashboardPage() {
   const [projectsData, setProjectsData] = useState<Project[]>(defaultSample);
+  const [backendTeams, setBackendTeams] = useState<any[]>([]);
+  const [backendMembers, setBackendMembers] = useState<any[]>([]);
+  const [backendTeamStats, setBackendTeamStats] = useState<any[]>([]);
 
   useEffect(() => {
     let mounted = true;
@@ -104,11 +111,58 @@ export default function EmployeeDashboardPage() {
     return () => { mounted = false; };
   }, []);
 
+  // fetch backend teams/members/stats to show live team overview when available
+  useEffect(() => {
+    let mounted = true;
+    const token = getToken();
+    if (!token) return;
+
+    (async () => {
+      try {
+        const tResp = await fetch(`${API_URL}/api/employee/teams/all`, { headers: { Authorization: `Bearer ${token}` } });
+        if (tResp.ok) {
+          const tData = await tResp.json();
+          if (!mounted) return;
+          setBackendTeams(Array.isArray(tData) ? tData : (tData.data || []));
+        }
+      } catch (e) {}
+
+      try {
+        const sResp = await fetch(`${API_URL}/api/employee/all-teams-stats`, { headers: { Authorization: `Bearer ${token}` } });
+        if (sResp.ok) {
+          const sData = await sResp.json();
+          if (!mounted) return;
+          setBackendTeamStats(Array.isArray(sData) ? sData : (sData.data || []));
+        }
+      } catch (e) {}
+
+      try {
+        const mResp = await fetch(`${API_URL}/api/employee/allteam`, { headers: { Authorization: `Bearer ${token}` } });
+        if (mResp.ok) {
+          const mData = await mResp.json();
+          if (!mounted) return;
+          const rawMembers = Array.isArray(mData) ? mData : (mData.data || []);
+          // normalize minimal fields
+          const members = rawMembers.map((m: any) => ({ id: m.id ?? m.employeeId ?? m.userId, name: m.fullName || m.name || `${m.firstName || ''} ${m.lastName || ''}`.trim(), team: m.team || m.teamName || m.team_name, productivity: m.productivity ?? m.productivityScore ?? null }));
+          setBackendMembers(members);
+        }
+      } catch (e) {}
+    })();
+
+    return () => { mounted = false; };
+  }, []);
+
   const inProgressProjects = projectsData.filter((p) => p.status === "In Progress");
   const inProgressCount = inProgressProjects.length;
   const totalProjects = projectsData.length || 0;
   // percent of projects that are In Progress (out of all projects)
   const percentInProgress = totalProjects ? Math.round((inProgressCount / totalProjects) * 100) : 0;
+
+  // dashboard status counts
+  const statusCounts = countByStatus(projectsData);
+  const dashboardCompleted = statusCounts.Completed || 0;
+  const dashboardInProgress = statusCounts["In Progress"] || 0;
+  const dashboardOnHold = statusCounts["On Hold"] || 0;
 
   useEffect(() => {
     // listen for updates from other components that write to localStorage
@@ -263,15 +317,170 @@ export default function EmployeeDashboardPage() {
             )}
           </ul>
         </div>
+      
       </section>
 
-      <section className={`bg-white p-4 rounded-lg shadow-sm ${styles.workloadSection}`}>
-        <h3 className="font-semibold mb-3">Workload Overview</h3>
-        <div>
-          {/* client component reads projects from localStorage or falls back to sample */}
+      {/* Dashboard summary cards (matches style of customer page) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className='bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow'>
+          <div className='flex items-center justify-between mb-4'>
+            <h3 className='text-lg font-semibold text-gray-800'>In Progress</h3>
+            <div className='bg-blue-100 p-3 rounded-full'>
+              <svg className='w-6 h-6 text-blue-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' />
+              </svg>
+            </div>
+          </div>
+          <p className='text-gray-600 mb-2'>Active projects</p>
+          <div>
+            <span className='text-2xl font-bold text-blue-600'>{dashboardInProgress}</span>
+            <span className='text-gray-500 ml-2'>projects</span>
+          </div>
+        </div>
+
+        <div className='bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow'>
+          <div className='flex items-center justify-between mb-4'>
+            <h3 className='text-lg font-semibold text-gray-800'>Completed</h3>
+            <div className='bg-green-100 p-3 rounded-full'>
+              <svg className='w-6 h-6 text-green-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M20 6L9 17l-5-5' />
+              </svg>
+            </div>
+          </div>
+          <p className='text-gray-600 mb-2'>Finished projects</p>
+          <div>
+            <span className='text-2xl font-bold text-green-600'>{dashboardCompleted}</span>
+            <span className='text-gray-500 ml-2'>projects</span>
+          </div>
+        </div>
+
+        <div className='bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow'>
+          <div className='flex items-center justify-between mb-4'>
+            <h3 className='text-lg font-semibold text-gray-800'>On Hold</h3>
+            <div className='bg-yellow-100 p-3 rounded-full'>
+              <svg className='w-6 h-6 text-yellow-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' />
+              </svg>
+            </div>
+          </div>
+          <p className='text-gray-600 mb-2'>Paused projects</p>
+          <div>
+            <span className='text-2xl font-bold text-yellow-600'>{dashboardOnHold}</span>
+            <span className='text-gray-500 ml-2'>projects</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Workload Overview and Team Overview side-by-side */}
+      <div className="flex flex-col md:flex-row md:items-start md:space-x-4">
+        <div className={`flex-1 bg-white p-4 rounded-lg shadow-sm ${styles.workloadSection}`}>
+          <h3 className="font-semibold mb-3">Workload Overview</h3>
           <WorkloadOverview />
         </div>
-      </section>
+
+  <div className="w-full md:w-2/3 bg-white p-6 rounded-lg shadow-sm mt-4 md:mt-0">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold">Team Overview</h3>
+            <Link href="/employee/team_analysis" className="text-sm text-blue-600">View all</Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {(() => {
+              // Build teams list: prefer backendTeams, then sharedTeams, then derive from projects
+              const teamsList: any[] = (backendTeams && backendTeams.length > 0)
+                ? backendTeams
+                : (sharedTeams && sharedTeams.length > 0)
+                  ? sharedTeams.filter((t:any)=> t.id !== 'all')
+                  : Array.from(new Set(projectsData.map((p:any) => (p.teamName || p.team || '').trim()).filter(Boolean))).map((name:any) => ({ id: name, name }));
+
+              return teamsList.map((t:any) => {
+                const teamName = t.name || t.teamName || t;
+
+                // members: prefer backendMembers then sharedMembers
+                const membersOfTeam = (backendMembers && backendMembers.length>0)
+                  ? backendMembers.filter((m:any)=> String((m.team||m.teamName||'')).trim() === String(teamName).trim())
+                  : (sharedMembers && sharedMembers.length>0)
+                    ? sharedMembers.filter((m:any) => String(m.team).trim() === String(teamName).trim())
+                    : [];
+
+                const membersCount = membersOfTeam.length || (t.totalMembers ?? 0);
+
+                const projectsOfTeam = projectsData.filter((p:any) => (String((p as any).teamName || p.team || '').trim()) === String(teamName).trim()).length;
+
+                // prefer backend team stats when available
+                let avgProd = 0;
+                const stat = backendTeamStats.find((s:any)=> {
+                  const sName = String(s.teamName || s.team_name || s.name || '').trim();
+                  return sName && sName === String(teamName).trim() || String(s.teamId || s.team_id || s.id || '').trim() === String(t.id || '').trim();
+                });
+
+                if (stat) {
+                  avgProd = Number(stat.averageProductivity ?? stat.avgProductivity ?? stat.avg ?? stat.average ?? stat.productivity ?? 0) || 0;
+                } else if (membersOfTeam && membersOfTeam.length > 0) {
+                  const total = membersOfTeam.reduce((acc:any, m:any) => acc + (Number(m.productivity) || 0), 0);
+                  avgProd = membersOfTeam.length ? Math.round(total / membersOfTeam.length) : 0;
+                } else {
+                  // fallback: compute from average project progress for this team
+                  const teamProjects = projectsData.filter((p:any) => (String((p as any).teamName || p.team || '').trim()) === String(teamName).trim());
+                  if (teamProjects.length > 0) {
+                    const totalProgress = teamProjects.reduce((acc:any, p:any) => acc + (Number(p.progress) || 0), 0);
+                    avgProd = Math.round(totalProgress / teamProjects.length);
+                  } else {
+                    // No team-specific projects found — fall back to global average project progress so the dashboard shows a meaningful percentage
+                    const allProjectsWithProgress = projectsData.filter((p:any) => typeof p.progress === 'number');
+                    if (allProjectsWithProgress.length > 0) {
+                      const totalProgress = allProjectsWithProgress.reduce((acc:any, p:any) => acc + (Number(p.progress) || 0), 0);
+                      avgProd = Math.round(totalProgress / allProjectsWithProgress.length);
+                    } else {
+                      // No progress data available; display 0 as a safe default
+                      avgProd = 0;
+                    }
+                  }
+                }
+
+                // sanitize and clamp between 0-100
+                avgProd = Math.max(0, Math.min(100, Math.round(Number(avgProd) || 0)));
+
+                let fillClass = 'bg-orange-400';
+                if (avgProd >= 95) fillClass = 'bg-green-500';
+                else if (avgProd >= 90) fillClass = 'bg-teal-500';
+                else if (avgProd >= 85) fillClass = 'bg-yellow-400';
+
+                const linkTarget = `/employee/team_analysis?team=${encodeURIComponent(teamName)}`;
+
+                return (
+                  <Link
+                    key={t.id || teamName}
+                    href={linkTarget}
+                    className="block"
+                    aria-label={`View ${teamName} details`}
+                  >
+                    <div className="bg-white p-6 rounded-md shadow-sm hover:shadow-lg transition-shadow cursor-pointer">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="text-sm font-medium text-gray-800">{teamName}</div>
+                          <div className="text-xs text-gray-500">{membersCount} members • {projectsOfTeam} projects</div>
+                        </div>
+                        <div className="text-sm font-semibold text-gray-700 ml-2">{avgProd}%</div>
+                      </div>
+
+                      <div className="mt-3">
+                        <div className="w-full bg-gray-100 h-3 rounded overflow-hidden">
+                          <div className={`${fillClass} h-3`} style={{ width: `${avgProd}%` }} />
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between">
+                        <span className="text-xs text-gray-500">Productivity</span>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              });
+            })()}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { Plus, Search } from "lucide-react"
 import AppointmentCard from "../components/appointment-card"
 import BookingWizard from "../components/booking-wizard"
 import { getCustomerAppointments, AppointmentResponse } from "../../lib/appointmentsApi"
+import { cancelAppointment } from "../../lib/appointmentsApi"
 
 export default function MyAppointments() {
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([])
@@ -138,7 +139,7 @@ export default function MyAppointments() {
                   </div>
                 ) : (
                   <p className="text-3xl font-bold text-purple-600">
-                    {appointments.filter((a) => a.status === "IN_SERVICE").length}
+                    {appointments.filter((a) => a.status === "IN_PROGRESS").length}
                   </p>
                 )}
               </div>
@@ -205,9 +206,9 @@ export default function MyAppointments() {
                     : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
                 }`}
               >
-                In Service ({appointments.filter(a => a.status === "IN_SERVICE").length})
+                In Progress ({appointments.filter(a => a.status === "IN_PROGRESS").length})
               </Button>
-
+{/* 
               <Button
                 onClick={() => setFilterStatus("READY")}
                 className={`${
@@ -217,7 +218,7 @@ export default function MyAppointments() {
                 }`}
               >
                 Ready ({appointments.filter(a => a.status === "READY").length})
-              </Button>
+              </Button> */}
 
               <Button
                 onClick={() => setFilterStatus("COMPLETED")}
@@ -298,9 +299,19 @@ export default function MyAppointments() {
                   onDeleteReview={(appointmentId: string) => {
                     console.log('Review deleted:', appointmentId)
                   }}
-                  onCancel={(appointmentId: string) => {
-                    console.log('Appointment cancelled:', appointmentId)
-                    fetchAppointments()
+                //   onCancel={(appointmentId: string) => {
+                //     console.log('Appointment cancelled:', appointmentId)
+                //     fetchAppointments()
+                //   }}
+                  onCancel={async (appointmentId: string) => {
+                    try {
+                              await cancelAppointment(appointmentId)
+                              alert("Appointment cancelled successfully!")
+                              fetchAppointments() // refresh list
+                    } catch (error) {
+                              console.error("Cancel failed:", error)
+                              alert("Failed to cancel appointment. Please try again.")
+                    }
                   }}
                 />
               ))}

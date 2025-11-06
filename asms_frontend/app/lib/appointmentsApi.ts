@@ -287,3 +287,42 @@ export async function getAppointmentStatus(appointmentId: number): Promise<strin
     throw new Error('Failed to fetch appointment status.');
   }
 }
+
+//Cancel appointment
+export async function cancelAppointment(appointmentId: string) {
+  const userData = localStorage.getItem("user");
+
+  if (!userData) {
+    throw new Error("No user data found. Please log in again.");
+  }
+
+  const user = JSON.parse(userData);
+  const token = user.token;
+
+  if (!token) {
+    throw new Error("No token found. Please sign in again.");
+  }
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+  const endpoint = `${apiUrl}/api/customer/appointments/${appointmentId}/cancel`;
+
+  console.log("🟡 Sending cancel request to:", endpoint);
+
+  const response = await fetch(endpoint, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("❌ Cancel appointment failed:", errorText);
+    throw new Error("Failed to cancel appointment");
+  }
+
+  console.log("✅ Appointment cancelled successfully!");
+  return await response.json();
+}
+

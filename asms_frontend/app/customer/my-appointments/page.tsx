@@ -8,6 +8,7 @@ import { Plus, Search } from "lucide-react"
 import AppointmentCard from "../components/appointment-card"
 import BookingWizard from "../components/booking-wizard"
 import { getCustomerAppointments, AppointmentResponse } from "../../lib/appointmentsApi"
+import { rejectAppointment } from "../../lib/appointmentsApi"
 
 export default function MyAppointments() {
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([])
@@ -350,9 +351,19 @@ export default function MyAppointments() {
                   onDeleteReview={(appointmentId: string) => {
                     console.log('Review deleted:', appointmentId)
                   }}
-                  onCancel={(appointmentId: string) => {
-                    console.log('Appointment cancelled:', appointmentId)
-                    fetchAppointments()
+                //   onCancel={(appointmentId: string) => {
+                //     console.log('Appointment cancelled:', appointmentId)
+                //     fetchAppointments()
+                //   }}
+                  onCancel={async (appointmentId: string) => {
+                    try {
+                              await rejectAppointment(Number(appointmentId))
+                              alert("Appointment cancelled successfully!")
+                              fetchAppointments() // refresh list
+                    } catch (error) {
+                              console.error("Cancel failed:", error)
+                              alert("Failed to cancel appointment. Please try again.")
+                    }
                   }}
                 />
               ))}

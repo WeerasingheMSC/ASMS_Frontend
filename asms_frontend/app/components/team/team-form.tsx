@@ -66,7 +66,6 @@ const teamMemberSchema = z.object({
     .min(5, "Address must be at least 5 characters")
     .max(200, "Address must be less than 200 characters")
     .transform(val => val.trim()),
-  // Fixed: Use union type with empty string and proper validation
   city: z.union([
     DistrictEnum,
     z.literal("")
@@ -137,18 +136,6 @@ const getToken = (): string | null => {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
-// Toast hook replacement
-const useToast = () => {
-  const toast = ({ title, description, variant }: { title: string; description?: string; variant?: "default" | "destructive" }) => {
-    if (variant === "destructive") {
-      console.error(`${title}${description ? `: ${description}` : ""}`)
-    } else {
-      console.log(`${title}${description ? `: ${description}` : ""}`)
-    }
-  }
-  return { toast }
-}
-
 export default function TeamForm({ teamId, onClose, onSuccess }: TeamFormProps) {
   const [loading, setLoading] = useState(false)
   const [teams, setTeams] = useState<Team[]>([])
@@ -156,7 +143,6 @@ export default function TeamForm({ teamId, onClose, onSuccess }: TeamFormProps) 
   const [teamsLoading, setTeamsLoading] = useState(true)
   const [userLoading, setUserLoading] = useState(true)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const { toast } = useToast()
 
   const form = useForm<TeamMemberFormData>({
     resolver: zodResolver(teamMemberSchema),
@@ -181,9 +167,8 @@ export default function TeamForm({ teamId, onClose, onSuccess }: TeamFormProps) 
         await Promise.all([fetchCurrentUser(), fetchTeams()])
       } catch (error) {
         console.error("Error fetching data:", error)
-        setErrors({ 
-          submit: "Failed to load required data. Please try again." 
-        })
+        const errorMessage = error instanceof Error ? error.message : "Failed to load required data"
+        setErrors({ submit: errorMessage })
       }
     }
 
@@ -194,9 +179,10 @@ export default function TeamForm({ teamId, onClose, onSuccess }: TeamFormProps) 
     try {
       setUserLoading(true)
       const token = getToken()
+      console.log("Token available for user fetch:", !!token)
       
       if (!token) {
-        throw new Error("No authentication token found")
+        throw new Error("No authentication token found. Please log in again.")
       }
 
       const response = await fetch(`${API_URL}/api/employee/current`, {
@@ -207,23 +193,37 @@ export default function TeamForm({ teamId, onClose, onSuccess }: TeamFormProps) 
         },
       })
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch user: ${response.status}`)
-      }
+      console.log("Response status for user fetch:", response.status)
 
-      const userData = await response.json()
-      const userInfo: User = {
-        id: userData.id,
-        firstName: userData.firstName || "",
-        lastName: userData.lastName || "",
-        username: userData.username,
-        position: userData.position
+      if (response.ok) {
+        const userData = await response.json()
+        console.log("User data fetched successfully:", userData)
+        
+        const userInfo: User = {
+          id: userData.id,
+          firstName: userData.firstName || "",
+          lastName: userData.lastName || "",
+          username: userData.username,
+          position: userData.position
+        }
+        
+        console.log("Setting current user:", userInfo)
+        setCurrentUser(userInfo)
+      } else if (response.status === 401) {
+        // Token expired or invalid
+        localStorage.removeItem('jwtToken')
+        localStorage.removeItem('user')
+        throw new Error("Session expired. Please log in again.")
+      } else {
+        const errorText = await response.text()
+        throw new Error(`HTTP ${response.status}: ${errorText}`)
       }
-      
-      setCurrentUser(userInfo)
     } catch (error) {
       console.error("Error fetching user:", error)
-      // Set fallback user for form submission
+      const errorMessage = error instanceof Error ? error.message : "Failed to load user information"
+      setErrors(prev => ({ ...prev, submit: errorMessage }))
+      
+      // Set fallback user data
       const fallbackUser: User = {
         id: 1,
         firstName: "Current",
@@ -253,10 +253,12 @@ export default function TeamForm({ teamId, onClose, onSuccess }: TeamFormProps) 
       })
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch teams: ${response.status}`)
+        const errorText = await response.text()
+        throw new Error(`Failed to fetch teams: ${response.status} - ${errorText}`)
       }
 
       const teamsData = await response.json()
+      console.log("Teams data fetched successfully:", teamsData)
       
       // Transform the API response to match Team interface
       const transformedTeams: Team[] = teamsData.map((team: any) => ({
@@ -273,6 +275,8 @@ export default function TeamForm({ teamId, onClose, onSuccess }: TeamFormProps) 
       }
     } catch (error) {
       console.error("Error fetching teams:", error)
+      const errorMessage = error instanceof Error ? error.message : "Failed to load teams"
+      setErrors(prev => ({ ...prev, submit: errorMessage }))
       setTeams([])
     } finally {
       setTeamsLoading(false)
@@ -298,10 +302,20 @@ export default function TeamForm({ teamId, onClose, onSuccess }: TeamFormProps) 
         throw new Error("Authentication token missing")
       }
 
+      // Prepare data for backend - convert to uppercase for enums and format dates
       const requestData = {
-        ...data,
-        supervisorId: currentUser?.id, // Auto-fill supervisor ID from current user
-        age,
+        fullName: data.fullName.trim(),
+        nic: data.nic,
+        contactNo: data.contactNo,
+        birthDate: data.birthDate,
+        address: data.address.trim(),
+        city: data.city.toUpperCase().replace(/ /g, "_"),
+        specialization: data.specialization.toUpperCase(),
+        joinedDate: data.joinedDate,
+        workingHoursPerDay: data.workingHoursPerDay,
+        teamId: data.teamId,
+        supervisorId: currentUser?.id,
+        age: age
       }
 
       console.log("Submitting team member data:", requestData)
@@ -316,27 +330,29 @@ export default function TeamForm({ teamId, onClose, onSuccess }: TeamFormProps) 
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || "Failed to add team member")
+        let errorMessage = "Failed to add team member"
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.message || errorMessage
+        } catch (parseError) {
+          // If response is not JSON, use status text
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`
+        }
+        throw new Error(errorMessage)
       }
 
-      toast({
-        title: "Success",
-        description: "Team member added successfully",
-      })
+      const result = await response.json()
+      console.log("Team member created successfully:", result)
 
+      // Show success message
+      setErrors({})
       onSuccess()
       onClose()
+      
     } catch (error) {
       console.error("Error submitting form:", error)
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive",
-      })
-      setErrors({ 
-        submit: error instanceof Error ? error.message : "An error occurred" 
-      })
+      const errorMessage = error instanceof Error ? error.message : "An error occurred while adding team member"
+      setErrors({ submit: errorMessage })
     } finally {
       setLoading(false)
     }
@@ -348,63 +364,92 @@ export default function TeamForm({ teamId, onClose, onSuccess }: TeamFormProps) 
     }
   }
 
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose()
+    }
+  }
+
   const retryDataFetch = () => {
+    setUserLoading(true)
+    setTeamsLoading(true)
     setErrors({})
     const fetchData = async () => {
       try {
         await Promise.all([fetchCurrentUser(), fetchTeams()])
       } catch (error) {
         console.error("Error retrying data fetch:", error)
-        setErrors({ 
-          submit: "Failed to load required data. Please try again." 
-        })
+        const errorMessage = error instanceof Error ? error.message : "Failed to load required data"
+        setErrors({ submit: errorMessage })
       }
     }
     fetchData()
   }
 
+  if (userLoading || teamsLoading) {
+    return (
+      <div className={styles.modalOverlay} onClick={handleOverlayClick}>
+        <div className={styles.modalContent}>
+          <div className={styles.loadingState}>
+            <div className={styles.loadingSpinner}></div>
+            <p>Loading data...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className={styles.modalOverlay}>
+    <div className={styles.modalOverlay} onClick={handleOverlayClick}>
       <div className={styles.modalContent}>
         <div className={styles.modalHeader}>
-          <h3>Add Team Member</h3>
-          <button className={styles.closeBtn} onClick={handleClose}>×</button>
+          <h2>Add Team Member</h2>
+          <button 
+            className={styles.closeButton}
+            onClick={onClose}
+            disabled={loading}
+          >
+            ×
+          </button>
         </div>
-        <div className={styles.modalBody}>
-          {/* Supervisor Info Display */}
-          <div className={styles.supervisorInfo}>
-            <div className={styles.infoCard}>
-              <h4>Supervisor Information</h4>
-              {userLoading ? (
-                <div className={styles.loadingText}>Loading supervisor info...</div>
-              ) : currentUser ? (
-                <div className={styles.userDetails}>
-                  <div className={styles.userName}>
-                    {currentUser.firstName} {currentUser.lastName}
-                  </div>
-                  <div className={styles.userId}>
-                    Employee ID: {currentUser.id}
-                    {currentUser.position && ` • ${currentUser.position}`}
-                  </div>
-                </div>
-              ) : (
-                <div className={styles.errorText}>Unable to load supervisor information</div>
-              )}
-            </div>
-          </div>
 
-          <form onSubmit={form.handleSubmit(onSubmit)} className={styles.form}>
-            {/* Team Selection Dropdown */}
+        <form onSubmit={form.handleSubmit(onSubmit)} className={styles.teamForm}>
+          <div className={styles.formGrid}>
+            {/* Supervisor Info Display */}
+            <div className={`${styles.formGroup} ${styles.fullWidth}`}>
+              <label className={styles.formLabel}>
+                Supervisor
+              </label>
+              <div className={styles.userDisplay}>
+                <input
+                  type="text"
+                  value={currentUser ? `${currentUser.firstName} ${currentUser.lastName}`.trim() : "Not available"}
+                  className={styles.formInput}
+                  disabled
+                  readOnly
+                />
+                {currentUser && (
+                  <div className={styles.userDetails}>
+                    <div className={styles.helperText}>
+                      Employee ID: {currentUser.id} {currentUser.position && `• ${currentUser.position}`}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Team Selection */}
             <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Team *</label>
-              {teamsLoading ? (
-                <div className={styles.loadingText}>Loading teams...</div>
-              ) : teams.length === 0 ? (
+              <label htmlFor="teamId" className={styles.formLabel}>
+                Team *
+              </label>
+              {teams.length === 0 ? (
                 <div className={styles.errorText}>No teams available. Please create a team first.</div>
               ) : (
                 <select
-                  className={styles.formInput}
-                  disabled={loading || teamsLoading}
+                  id="teamId"
+                  className={`${styles.formSelect} ${form.formState.errors.teamId ? styles.inputError : ""}`}
+                  disabled={loading}
                   {...form.register("teamId")}
                 >
                   <option value="">Select Team</option>
@@ -416,90 +461,108 @@ export default function TeamForm({ teamId, onClose, onSuccess }: TeamFormProps) 
                 </select>
               )}
               {form.formState.errors.teamId && (
-                <p className={styles.formError}>{form.formState.errors.teamId.message}</p>
+                <span className={styles.errorText}>{form.formState.errors.teamId.message}</span>
               )}
             </div>
 
             {/* Full Name */}
             <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Full Name *</label>
+              <label htmlFor="fullName" className={styles.formLabel}>
+                Full Name *
+              </label>
               <input
                 type="text"
+                id="fullName"
                 placeholder="John Doe"
-                className={styles.formInput}
+                className={`${styles.formInput} ${form.formState.errors.fullName ? styles.inputError : ""}`}
                 disabled={loading}
                 {...form.register("fullName")}
               />
               {form.formState.errors.fullName && (
-                <p className={styles.formError}>{form.formState.errors.fullName.message}</p>
+                <span className={styles.errorText}>{form.formState.errors.fullName.message}</span>
               )}
             </div>
 
             {/* NIC */}
             <div className={styles.formGroup}>
-              <label className={styles.formLabel}>NIC *</label>
+              <label htmlFor="nic" className={styles.formLabel}>
+                NIC *
+              </label>
               <input
                 type="text"
+                id="nic"
                 placeholder="123456789012"
-                className={styles.formInput}
+                className={`${styles.formInput} ${form.formState.errors.nic ? styles.inputError : ""}`}
                 disabled={loading}
                 maxLength={12}
                 {...form.register("nic")}
               />
               {form.formState.errors.nic && (
-                <p className={styles.formError}>{form.formState.errors.nic.message}</p>
+                <span className={styles.errorText}>{form.formState.errors.nic.message}</span>
               )}
             </div>
 
             {/* Contact Number */}
             <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Contact Number *</label>
+              <label htmlFor="contactNo" className={styles.formLabel}>
+                Contact Number *
+              </label>
               <input
                 type="tel"
+                id="contactNo"
                 placeholder="0712345678"
-                className={styles.formInput}
+                className={`${styles.formInput} ${form.formState.errors.contactNo ? styles.inputError : ""}`}
                 disabled={loading}
                 {...form.register("contactNo")}
               />
               {form.formState.errors.contactNo && (
-                <p className={styles.formError}>{form.formState.errors.contactNo.message}</p>
+                <span className={styles.errorText}>{form.formState.errors.contactNo.message}</span>
               )}
             </div>
 
             {/* Birth Date */}
             <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Birth Date *</label>
+              <label htmlFor="birthDate" className={styles.formLabel}>
+                Birth Date *
+              </label>
               <input
                 type="date"
-                className={styles.formInput}
+                id="birthDate"
+                className={`${styles.formInput} ${form.formState.errors.birthDate ? styles.inputError : ""}`}
                 disabled={loading}
                 {...form.register("birthDate")}
               />
               {form.formState.errors.birthDate && (
-                <p className={styles.formError}>{form.formState.errors.birthDate.message}</p>
+                <span className={styles.errorText}>{form.formState.errors.birthDate.message}</span>
               )}
             </div>
 
             {/* Address */}
             <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Address *</label>
+              <label htmlFor="address" className={styles.formLabel}>
+                Address *
+              </label>
               <input
                 type="text"
+                id="address"
                 placeholder="Street address"
-                className={styles.formInput}
+                className={`${styles.formInput} ${form.formState.errors.address ? styles.inputError : ""}`}
                 disabled={loading}
                 {...form.register("address")}
               />
               {form.formState.errors.address && (
-                <p className={styles.formError}>{form.formState.errors.address.message}</p>
+                <span className={styles.errorText}>{form.formState.errors.address.message}</span>
               )}
             </div>
 
-            {/* City/District Dropdown */}
+            {/* City/District */}
             <div className={styles.formGroup}>
-              <label className={styles.formLabel}>City/District *</label>
+              <label htmlFor="city" className={styles.formLabel}>
+                City/District *
+              </label>
               <select
-                className={styles.formInput}
+                id="city"
+                className={`${styles.formSelect} ${form.formState.errors.city ? styles.inputError : ""}`}
                 disabled={loading}
                 {...form.register("city")}
               >
@@ -511,15 +574,18 @@ export default function TeamForm({ teamId, onClose, onSuccess }: TeamFormProps) 
                 ))}
               </select>
               {form.formState.errors.city && (
-                <p className={styles.formError}>{form.formState.errors.city.message}</p>
+                <span className={styles.errorText}>{form.formState.errors.city.message}</span>
               )}
             </div>
 
             {/* Specialization */}
             <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Specialization *</label>
+              <label htmlFor="specialization" className={styles.formLabel}>
+                Specialization *
+              </label>
               <select
-                className={styles.formInput}
+                id="specialization"
+                className={`${styles.formSelect} ${form.formState.errors.specialization ? styles.inputError : ""}`}
                 disabled={loading}
                 {...form.register("specialization")}
               >
@@ -531,29 +597,35 @@ export default function TeamForm({ teamId, onClose, onSuccess }: TeamFormProps) 
                 ))}
               </select>
               {form.formState.errors.specialization && (
-                <p className={styles.formError}>{form.formState.errors.specialization.message}</p>
+                <span className={styles.errorText}>{form.formState.errors.specialization.message}</span>
               )}
             </div>
 
             {/* Joined Date */}
             <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Joined Date *</label>
+              <label htmlFor="joinedDate" className={styles.formLabel}>
+                Joined Date *
+              </label>
               <input
                 type="date"
-                className={styles.formInput}
+                id="joinedDate"
+                className={`${styles.formInput} ${form.formState.errors.joinedDate ? styles.inputError : ""}`}
                 disabled={loading}
                 {...form.register("joinedDate")}
               />
               {form.formState.errors.joinedDate && (
-                <p className={styles.formError}>{form.formState.errors.joinedDate.message}</p>
+                <span className={styles.errorText}>{form.formState.errors.joinedDate.message}</span>
               )}
             </div>
 
-            {/* Working Hours Per Day */}
+            {/* Working Hours */}
             <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Working Hours Per Day *</label>
+              <label htmlFor="workingHoursPerDay" className={styles.formLabel}>
+                Working Hours Per Day *
+              </label>
               <select
-                className={styles.formInput}
+                id="workingHoursPerDay"
+                className={`${styles.formSelect} ${form.formState.errors.workingHoursPerDay ? styles.inputError : ""}`}
                 disabled={loading}
                 {...form.register("workingHoursPerDay")}
               >
@@ -565,44 +637,59 @@ export default function TeamForm({ teamId, onClose, onSuccess }: TeamFormProps) 
                 ))}
               </select>
               {form.formState.errors.workingHoursPerDay && (
-                <p className={styles.formError}>{form.formState.errors.workingHoursPerDay.message}</p>
+                <span className={styles.errorText}>{form.formState.errors.workingHoursPerDay.message}</span>
               )}
             </div>
+          </div>
 
-            {/* Submit Error */}
-            {errors.submit && (
-              <div className={styles.submitError}>
-                <div className={styles.errorText}>{errors.submit}</div>
+          {/* Submit Error */}
+          {errors.submit && (
+            <div className={styles.submitError}>
+              {errors.submit}
+              {errors.submit.includes("session") || errors.submit.includes("token") ? (
                 <button 
-                  type="button"
+                  onClick={() => window.location.href = '/signin'}
+                  className={styles.loginRedirectButton}
+                >
+                  Go to Login
+                </button>
+              ) : (
+                <button 
                   onClick={retryDataFetch}
                   className={styles.retryButton}
                 >
                   Retry Loading Data
                 </button>
-              </div>
-            )}
-
-            {/* Form Actions */}
-            <div className={styles.formActions}>
-              <button
-                type="button"
-                className={styles.btnSecondary}
-                onClick={handleClose}
-                disabled={loading}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className={styles.btnPrimary}
-                disabled={loading || teamsLoading || userLoading || teams.length === 0}
-              >
-                {loading ? "Adding..." : "Add Member"}
-              </button>
+              )}
             </div>
-          </form>
-        </div>
+          )}
+
+          {/* Form Actions */}
+          <div className={styles.formActions}>
+            <button
+              type="button"
+              onClick={onClose}
+              className={styles.btnSecondary}
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className={styles.btnPrimary}
+              disabled={loading || !currentUser || teams.length === 0}
+            >
+              {loading ? (
+                <>
+                  <span className={styles.loadingSpinner}></span>
+                  Adding Member...
+                </>
+              ) : (
+                "Add Member"
+              )}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   )

@@ -21,21 +21,21 @@ const page = () => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      const response = await fetch(`${API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: formData.username,
-          password: formData.password
-        }),
-      });
+  e.preventDefault();
 
-         if (!response.ok) {
+  try {
+    const response = await fetch(`${API_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: formData.username,
+        password: formData.password
+      }),
+    });
+
+    if (!response.ok) {
       const errorResult = await response.json().catch(() => ({ message: 'Unknown error occurred' }));
       alert(errorResult.message || 'Login failed');
       return;
@@ -52,7 +52,7 @@ const page = () => {
         window.location.href = "/Admin";
         break;
       case "CUSTOMER":
-        window.location.href = "/Customer";
+        window.location.href = "/customer";
         break;
       case "EMPLOYEE":
         window.location.href = "/employee";
@@ -61,11 +61,13 @@ const page = () => {
         alert("Invalid role. Contact system admin.");
         break;
     }
-  }catch (error) {
-      console.error('Error during sign in:', error);
-      alert('Network error. Please check if the backend is running.');
-    }
-  };
+
+  } catch (error) {
+    console.error('Error during sign in:', error);
+    alert('Network error. Please check if the backend is running.');
+  }
+};
+
 
   const [showpassword, setShowPassword] = useState(false);
 

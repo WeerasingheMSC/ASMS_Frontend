@@ -130,7 +130,7 @@ const page = () => {
             </div>
 
             <div className="text-sm sm:text-base">
-              <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
+              <a href="#" className="font-medium !text-blue-600 hover:!text-blue-400 underline">
                 Forgot password?
               </a>
             </div>
@@ -146,7 +146,7 @@ const page = () => {
           <div className="text-center">
             <p className="text-sm sm:text-base text-gray-200">
               Don&apos;t have an account?{' '}
-              <Link href="/signup" className="font-medium text-blue-600 hover:text-blue-500">
+              <Link href="/signup" className="font-medium !text-blue-600 hover:!text-blue-400 underline">
                 Sign up here
               </Link>
             </p>

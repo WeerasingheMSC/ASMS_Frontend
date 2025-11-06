@@ -1,5 +1,6 @@
 'use client'
 import React, { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import Sidebar from '../components/Sidebar'
 import Navbar from '../components/Navbar'
 import { IoMdClose } from "react-icons/io";
@@ -22,6 +23,7 @@ declare global {
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 const ServicesPage = () => {
+  const router = useRouter();
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [isEditPopupOpen, setIsEditPopupOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -504,7 +506,7 @@ const ServicesPage = () => {
           <h1 className='text-3xl font-bold text-blue-900'>Service Management</h1>
           <button
             onClick={() => setIsPopupOpen(true)}
-            className='bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-md'
+            className='bg-blue-800 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-md'
           >
             + Add New Service
           </button>
@@ -558,7 +560,7 @@ const ServicesPage = () => {
             <Tooltip title={selectedRows.length > 0 ? `Export ${selectedRows.length} selected rows to CSV` : 'Export all filtered data to CSV'}>
               <button
                 onClick={handleExportCSV}
-                className='bg-green-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-600 transition-colors shadow-md flex items-center gap-2 whitespace-nowrap'
+                className='bg-green-700 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-600 transition-colors shadow-md flex items-center gap-2 whitespace-nowrap'
               >
                 <FileDownloadIcon />
                 Export to CSV
@@ -586,13 +588,20 @@ const ServicesPage = () => {
             {filteredServices.map((service) => (
               <div
                 key={service.id}
-                className="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden relative"
+                className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden relative cursor-pointer"
+                onClick={(e) => {
+                  // Only navigate if not clicking on checkbox or toggle
+                  if (!(e.target as HTMLElement).closest('.checkbox-container, .toggle-container')) {
+                    router.push(`/Admin/Services/${service.id}`)
+                  }
+                }}
               >
                 {/* Selection Checkbox */}
-                <div className="absolute top-4 left-4 z-10">
+                <div className="absolute top-4 left-4 z-10 checkbox-container">
                   <Checkbox
                     checked={selectedRows.includes(service.id)}
                     onChange={() => handleSelectRow(service.id)}
+                    onClick={(e) => e.stopPropagation()}
                     sx={{
                       color: 'white',
                       backgroundColor: 'rgba(0,0,0,0.3)',
@@ -622,7 +631,7 @@ const ServicesPage = () => {
                   {/* Title and Status */}
                   <div className="flex items-start justify-between mb-3">
                     <h3 className="text-xl font-bold text-gray-900 flex-1">{service.serviceName}</h3>
-                    <label className="relative inline-flex items-center cursor-pointer ml-2">
+                    <label className="relative inline-flex items-center cursor-pointer ml-2 toggle-container" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={service.isActive}
@@ -634,7 +643,7 @@ const ServicesPage = () => {
                   </div>
 
                   {/* Category and Priority */}
-                  <div className="flex gap-2 mb-3 flex-wrap">
+                  <div className="flex gap-2 mb-4 flex-wrap">
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getCategoryColor(service.category)}`}>
                       {service.category}
                     </span>
@@ -648,13 +657,8 @@ const ServicesPage = () => {
                     </span>
                   </div>
 
-                  {/* Description */}
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                    {service.description || 'No description available'}
-                  </p>
-
                   {/* Service Details */}
-                  <div className="space-y-2 mb-4 text-sm">
+                  <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-500">Duration:</span>
                       <span className="font-semibold text-gray-900">{service.estimatedDuration} hours</span>
@@ -677,36 +681,17 @@ const ServicesPage = () => {
                     )}
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex gap-2 pt-4 border-t border-gray-200">
-                    <Tooltip title="Edit Service">
-                      <IconButton
-                        onClick={() => handleEdit(service)}
-                        size="small"
-                        sx={{
-                          color: '#3b82f6',
-                          '&:hover': {
-                            backgroundColor: '#dbeafe',
-                          },
-                        }}
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Delete Service">
-                      <IconButton
-                        onClick={() => handleDelete(service)}
-                        size="small"
-                        sx={{
-                          color: '#ef4444',
-                          '&:hover': {
-                            backgroundColor: '#fee2e2',
-                          },
-                        }}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                  {/* View Details Button */}
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/Admin/Services/${service.id}`);
+                      }}
+                      className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors text-sm"
+                    >
+                      View Details
+                    </button>
                   </div>
                 </div>
               </div>

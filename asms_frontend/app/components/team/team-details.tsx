@@ -56,6 +56,7 @@ export default function TeamDetails({ teamId, onClose, onTeamUpdated }: TeamDeta
     specialization: "",
     description: ""
   })
+  const [actionLoading, setActionLoading] = useState(false)
 
   useEffect(() => {
     if (teamId) {
@@ -92,7 +93,7 @@ export default function TeamDetails({ teamId, onClose, onTeamUpdated }: TeamDeta
           specialization: teamData.specialization || "General",
           memberCount: teamData.memberCount || 0,
           totalWorkingHours: teamData.totalWorkingHours || 0,
-          averageAge: teamData.averageAge || 0,
+          averageAge: Math.round(teamData.averageAge) || 0,
           description: teamData.description,
           employeeId: teamData.employeeId?.toString(),
           employeeName: teamData.employeeName
@@ -208,6 +209,7 @@ export default function TeamDetails({ teamId, onClose, onTeamUpdated }: TeamDeta
   const handleSave = async () => {
     try {
       setError(null);
+      setActionLoading(true);
       
       const token = getToken();
       if (!token) {
@@ -215,7 +217,6 @@ export default function TeamDetails({ teamId, onClose, onTeamUpdated }: TeamDeta
       }
 
       // Get the current employee ID from the team data or from user session
-      // You might need to adjust this based on how you store user information
       const employeeId = team?.employeeId || getCurrentEmployeeId();
       
       if (!employeeId) {
@@ -232,7 +233,7 @@ export default function TeamDetails({ teamId, onClose, onTeamUpdated }: TeamDeta
           name: editForm.name,
           specialization: editForm.specialization,
           description: editForm.description,
-          employeeId: employeeId // Include the employee ID in the request
+          employeeId: employeeId
         }),
       });
 
@@ -246,7 +247,7 @@ export default function TeamDetails({ teamId, onClose, onTeamUpdated }: TeamDeta
           specialization: updatedTeam.specialization || "General",
           memberCount: updatedTeam.memberCount || 0,
           totalWorkingHours: updatedTeam.totalWorkingHours || 0,
-          averageAge: updatedTeam.averageAge || 0,
+          averageAge: Math.round(updatedTeam.averageAge) || 0,
           description: updatedTeam.description,
           employeeId: updatedTeam.employeeId?.toString(),
           employeeName: updatedTeam.employeeName
@@ -255,9 +256,13 @@ export default function TeamDetails({ teamId, onClose, onTeamUpdated }: TeamDeta
         setTeam(transformedTeam);
         setIsEditing(false);
         
+        // Call the parent callback to refresh data and show toast
         if (onTeamUpdated) {
           onTeamUpdated();
         }
+        
+        // Show success message
+        showSuccessToast(`Team "${transformedTeam.name}" updated successfully!`);
       } else if (response.status === 401) {
         const errorMessage = "Token expired or invalid. Please log in again.";
         removeToken();
@@ -272,19 +277,18 @@ export default function TeamDetails({ teamId, onClose, onTeamUpdated }: TeamDeta
       console.error("Error updating team:", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred while updating team";
       setError(errorMessage);
+      showErrorToast(errorMessage);
+    } finally {
+      setActionLoading(false);
     }
   }
 
   // Helper function to get current employee ID
-  // You might need to adjust this based on your authentication setup
   const getCurrentEmployeeId = (): string | null => {
-    // Option 1: Get from team data (if the current user is the manager)
     if (team?.employeeId) {
       return team.employeeId;
     }
     
-    // Option 2: Get from user session/local storage
-    // This depends on how you store user information
     try {
       const userData = localStorage.getItem('userData');
       if (userData) {
@@ -294,9 +298,6 @@ export default function TeamDetails({ teamId, onClose, onTeamUpdated }: TeamDeta
     } catch (e) {
       console.error('Error parsing user data:', e);
     }
-    
-    // Option 3: Get from token (if it contains employee ID)
-    // You might need to decode the JWT token if it contains employee information
     
     return null;
   }
@@ -308,14 +309,15 @@ export default function TeamDetails({ teamId, onClose, onTeamUpdated }: TeamDeta
 
     try {
       setError(null);
+      setActionLoading(true);
       
       const token = getToken();
       if (!token) {
         throw new Error("No authentication token found. Please log in again.");
       }
 
-      // For delete, you might also need to include employee ID
       const employeeId = team?.employeeId || getCurrentEmployeeId();
+      const teamName = team?.name || "this team";
       
       const response = await fetch(`${API_URL}/api/employee/teams/${teamId}`, {
         method: "DELETE",
@@ -328,10 +330,19 @@ export default function TeamDetails({ teamId, onClose, onTeamUpdated }: TeamDeta
 
       if (response.ok) {
         console.log("Team deleted successfully");
+        
+        // Show success message before closing
+        showSuccessToast(`Team "${teamName}" deleted successfully!`);
+        
+        // Call the parent callback to refresh data
         if (onTeamUpdated) {
           onTeamUpdated();
         }
-        onClose();
+        
+        // Close the modal after a short delay to show the toast
+        setTimeout(() => {
+          onClose();
+        }, 1000);
       } else if (response.status === 401) {
         const errorMessage = "Token expired or invalid. Please log in again.";
         removeToken();
@@ -346,6 +357,9 @@ export default function TeamDetails({ teamId, onClose, onTeamUpdated }: TeamDeta
       console.error("Error deleting team:", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred while deleting team";
       setError(errorMessage);
+      showErrorToast(errorMessage);
+    } finally {
+      setActionLoading(false);
     }
   }
 
@@ -355,6 +369,30 @@ export default function TeamDetails({ teamId, onClose, onTeamUpdated }: TeamDeta
       ...prev,
       [name]: value
     }));
+  }
+
+  // Function to show success toast (this will be handled by the parent component)
+  const showSuccessToast = (message: string) => {
+    // Dispatch a custom event that the parent component can listen to
+    const event = new CustomEvent('showToast', {
+      detail: {
+        message,
+        type: 'success'
+      }
+    });
+    window.dispatchEvent(event);
+  }
+
+  // Function to show error toast
+  const showErrorToast = (message: string) => {
+    // Dispatch a custom event that the parent component can listen to
+    const event = new CustomEvent('showToast', {
+      detail: {
+        message,
+        type: 'error'
+      }
+    });
+    window.dispatchEvent(event);
   }
 
   if (loading) {
@@ -474,15 +512,15 @@ export default function TeamDetails({ teamId, onClose, onTeamUpdated }: TeamDeta
                   
                   <div className={styles.teamStats}>
                     <div className={styles.statItem}>
-                      <span className={styles.statLabel}>Total Members</span>
+                      <span className={styles.statLabel}>Maximum Members Count</span>
                       <span className={styles.statValue}>{team.memberCount}</span>
                     </div>
                     <div className={styles.statItem}>
-                      <span className={styles.statLabel}>Total Hours/Day</span>
+                      <span className={styles.statLabel}>Average Working Hours/Day</span>
                       <span className={styles.statValue}>{team.totalWorkingHours}</span>
                     </div>
                     <div className={styles.statItem}>
-                      <span className={styles.statLabel}>Average Age</span>
+                      <span className={styles.statLabel}>Average Age (min)</span>
                       <span className={styles.statValue}>{team.averageAge}</span>
                     </div>
                   </div>
@@ -545,20 +583,49 @@ export default function TeamDetails({ teamId, onClose, onTeamUpdated }: TeamDeta
         <div className={styles.modalFooter}>
           {isEditing ? (
             <>
-              <button onClick={handleSave} className={styles.btnPrimary}>
-                Save Changes
+              <button 
+                onClick={handleSave} 
+                className={styles.btnPrimary}
+                disabled={actionLoading}
+              >
+                {actionLoading ? (
+                  <>
+                    <span className={styles.loadingSpinner}></span>
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
               </button>
-              <button onClick={handleCancelEdit} className={styles.btnSecondary}>
+              <button 
+                onClick={handleCancelEdit} 
+                className={styles.btnSecondary}
+                disabled={actionLoading}
+              >
                 Cancel
               </button>
             </>
           ) : (
             <>
-              <button onClick={handleEdit} className={styles.btnPrimary}>
+              <button 
+                onClick={handleEdit} 
+                className={styles.btnPrimary}
+              >
                 Edit Team
               </button>
-              <button onClick={handleDelete} className={styles.btnDanger}>
-                Delete Team
+              <button 
+                onClick={handleDelete} 
+                className={styles.btnDanger}
+                disabled={actionLoading}
+              >
+                {actionLoading ? (
+                  <>
+                    <span className={styles.loadingSpinner}></span>
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete Team"
+                )}
               </button>
               <button onClick={onClose} className={styles.btnSecondary}>
                 Close

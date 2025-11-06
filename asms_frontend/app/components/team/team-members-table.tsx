@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { getToken, removeToken } from "../../utils/auth"
+import styles from "../../styles/team.module.css"
 
 interface TeamMember {
   id: number
@@ -82,6 +83,8 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null)
   const [showMemberModal, setShowMemberModal] = useState(false)
   const [modalMode, setModalMode] = useState<"view" | "edit">("view")
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10)
+  const [currentPage, setCurrentPage] = useState<number>(1)
 
   // Use useCallback to prevent unnecessary re-renders
   const filterMembers = useCallback(() => {
@@ -121,11 +124,36 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
     }
 
     setFilteredMembers(filtered)
+    setCurrentPage(1) // Reset to first page when filters change
   }, [teamMembers, selectedTeam, searchTerm])
 
   useEffect(() => {
     filterMembers()
   }, [filterMembers])
+
+  // Function to show success toast
+  const showSuccessToast = (message: string) => {
+    // Dispatch a custom event that the parent component can listen to
+    const event = new CustomEvent('showToast', {
+      detail: {
+        message,
+        type: 'success'
+      }
+    });
+    window.dispatchEvent(event);
+  }
+
+  // Function to show error toast
+  const showErrorToast = (message: string) => {
+    // Dispatch a custom event that the parent component can listen to
+    const event = new CustomEvent('showToast', {
+      detail: {
+        message,
+        type: 'error'
+      }
+    });
+    window.dispatchEvent(event);
+  }
 
   const handleViewMember = (member: TeamMember) => {
     setSelectedMember(member)
@@ -149,7 +177,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
       const token = getToken()
       
       if (!token) {
-        alert("No authentication token found. Please log in again.");
+        showErrorToast("No authentication token found. Please log in again.");
         removeToken();
         window.location.href = '/signin';
         return;
@@ -164,8 +192,8 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
       })
 
       if (response.ok) {
-        alert("Team member deleted successfully")
-        window.location.reload()
+        showSuccessToast("Team member deleted successfully!");
+        window.location.reload();
       } else {
         let errorMessage = "Failed to delete team member";
         if (response.status === 403) {
@@ -175,11 +203,11 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
           removeToken();
           window.location.href = '/signin';
         }
-        alert(errorMessage);
+        showErrorToast(errorMessage);
       }
     } catch (error) {
       console.error("Error deleting team member:", error)
-      alert("Failed to delete team member. Please check your connection.")
+      showErrorToast("Failed to delete team member. Please check your connection.");
     } finally {
       setLoading(false)
     }
@@ -191,7 +219,7 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
       const token = getToken()
       
       if (!token) {
-        alert("No authentication token found. Please log in again.");
+        showErrorToast("No authentication token found. Please log in again.");
         removeToken();
         window.location.href = '/signin';
         return;
@@ -221,9 +249,9 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
       })
 
       if (response.ok) {
-        alert("Team member updated successfully")
-        setShowMemberModal(false)
-        window.location.reload()
+        showSuccessToast(`Team member "${updatedMember.fullName}" updated successfully!`);
+        setShowMemberModal(false);
+        window.location.reload();
       } else {
         let errorMessage = "Failed to update team member";
         if (response.status === 403) {
@@ -248,11 +276,11 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
           }
         } catch {}
         
-        alert(errorMessage);
+        showErrorToast(errorMessage);
       }
     } catch (error) {
       console.error("Error updating team member:", error)
-      alert("Failed to update team member. Please check your connection.")
+      showErrorToast("Failed to update team member. Please check your connection.");
     } finally {
       setLoading(false)
     }
@@ -265,55 +293,83 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
     return team ? team.name : `Team ${teamId}`
   }
 
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredMembers.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const currentMembers = filteredMembers.slice(startIndex, endIndex)
+
   // Ensure teams is always an array
   const teamsArray = Array.isArray(teams) ? teams : []
   const membersArray = Array.isArray(teamMembers) ? teamMembers : []
 
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
+
+  // Handle items per page change
+  const handleItemsPerPageChange = (value: number) => {
+    setItemsPerPage(value)
+    setCurrentPage(1) // Reset to first page
+  }
+
   return (
-    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+    <div className={styles.teamMembersTable}>
       {/* Header with Search and Filters */}
-      <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-          <div className="flex-1">
-            <h3 className="text-2xl font-bold text-gray-900">Team Members ({filteredMembers.length})</h3>
-            <p className="text-gray-600 mt-1">Manage all team members across different teams</p>
+      <div className={styles.tableHeader}>
+        <div className={styles.headerLeft}>
+          <h3>Team Members ({filteredMembers.length})</h3>
+          <p>Manage all team members across different teams</p>
+        </div>
+        <div className={styles.headerControls}>
+          <div className={styles.searchBox}>
+            <input
+              type="text"
+              placeholder="Search by name, NIC, contact, specialization..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={styles.searchInput}
+            />
+            <span className={styles.searchIcon}>🔍</span>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-            <div className="relative flex-1 sm:w-80">
-              <input
-                type="text"
-                placeholder="Search by name, NIC, contact, specialization..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-4 pr-10 py-3 border border-gray-300 rounded-xl bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 shadow-sm"
-              />
-              <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">🔍</span>
-            </div>
-            <div className="flex gap-3">
-              <select 
-                value={selectedTeam} 
-                onChange={(e) => setSelectedTeam(e.target.value)}
-                className="px-4 py-3 border border-gray-300 rounded-xl bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 min-w-40 shadow-sm"
-              >
-                <option value="all">All Teams</option>
-                {teamsArray.map((team) => (
-                  <option key={team.id} value={team.id}>
-                    {team.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className={styles.filterSection}>
+            <select 
+              value={selectedTeam} 
+              onChange={(e) => setSelectedTeam(e.target.value)}
+              className={styles.filterSelect}
+            >
+              <option value="all">All Teams</option>
+              {teamsArray.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                </option>
+              ))}
+            </select>
+            
+            {/* Items per page selector */}
+            <select 
+              value={itemsPerPage} 
+              onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+              className={styles.filterSelect}
+            >
+              <option value="5">5 per page</option>
+              <option value="10">10 per page</option>
+              <option value="20">20 per page</option>
+              <option value="30">30 per page</option>
+              <option value="50">50 per page</option>
+            </select>
           </div>
         </div>
       </div>
 
       {/* Table Container */}
-      <div className="overflow-x-auto">
+      <div className={styles.tableContainer}>
         {filteredMembers.length === 0 ? (
-          <div className="text-center py-16 px-6">
-            <div className="text-6xl mb-4 opacity-70">👥</div>
-            <h4 className="text-xl font-semibold text-gray-900 mb-2">No team members found</h4>
-            <p className="text-gray-600 max-w-md mx-auto">
+          <div className={styles.emptyState}>
+            <div className={styles.emptyIcon}>👥</div>
+            <h4>No team members found</h4>
+            <p>
               {searchTerm || selectedTeam !== "all" 
                 ? "Try adjusting your search or filter criteria" 
                 : "No team members available in the system"
@@ -321,441 +377,476 @@ export default function TeamMembersTable({ teams = [], teamMembers = [] }: TeamM
             </p>
           </div>
         ) : (
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b-2 border-gray-200">
-              <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Name</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">NIC</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Team</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Specialization</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Contact</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Age</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">City</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Joined Date</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Hours/Day</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredMembers.map((member) => (
-                <tr key={member.id} className="hover:bg-blue-50/30 transition-colors duration-150 group">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-400 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-md group-hover:scale-110 transition-transform duration-200">
-                        {member.fullName?.split(' ').map(n => n[0]).join('').toUpperCase()}
-                      </div>
-                      <span className="font-medium text-gray-900">{member.fullName}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{member.nic}</td>
-                  <td className="px-6 py-4">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
-                      {getTeamName(member.teamId)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
-                      {member.specialization}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{member.contactNo}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{member.age}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{member.city}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">
-                    {new Date(member.joinedDate).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
-                      {member.workingHoursPerDay}h
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                      <button
-                        onClick={() => handleViewMember(member)}
-                        className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                        title="View Details"
-                        disabled={loading}
-                      >
-                        👁️
-                      </button>
-                      <button
-                        onClick={() => handleEditMember(member)}
-                        className="p-2 text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                        title="Edit Member"
-                        disabled={loading}
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        onClick={() => handleDeleteMember(member.id)}
-                        className="p-2 text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                        title="Delete Member"
-                        disabled={loading}
-                      >
-                        {loading ? "⏳" : "🗑️"}
-                      </button>
-                    </div>
-                  </td>
+          <>
+            <table className={styles.membersTable}>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>NIC</th>
+                  <th>Team</th>
+                  <th>Specialization</th>
+                  <th>Contact</th>
+                  <th>Age</th>
+                  <th>City</th>
+                  <th>Joined Date</th>
+                  <th>Hours/Day</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {currentMembers.map((member) => (
+                  <tr key={member.id}>
+                    <td>
+                      <div className={styles.memberName}>
+                        <div className={styles.nameAvatar}>
+                          {member.fullName?.split(' ').map(n => n[0]).join('').toUpperCase()}
+                        </div>
+                        <span>{member.fullName}</span>
+                      </div>
+                    </td>
+                    <td>{member.nic}</td>
+                    <td>
+                      <span className={styles.teamBadge}>
+                        {getTeamName(member.teamId)}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={styles.teamBadge}>
+                        {member.specialization}
+                      </span>
+                    </td>
+                    <td>{member.contactNo}</td>
+                    <td>{member.age}</td>
+                    <td>{member.city}</td>
+                    <td>
+                      {new Date(member.joinedDate).toLocaleDateString()}
+                    </td>
+                    <td>
+                      <span className={styles.hoursBadge}>
+                        {member.workingHoursPerDay}h
+                      </span>
+                    </td>
+                    <td>
+                      <div className={styles.actionButtons}>
+                        <button
+                          onClick={() => handleViewMember(member)}
+                          className={styles.btnView}
+                          title="View Details"
+                          disabled={loading}
+                        >
+                          👁️
+                        </button>
+                        <button
+                          onClick={() => handleEditMember(member)}
+                          className={styles.btnEdit}
+                          title="Edit Member"
+                          disabled={loading}
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => handleDeleteMember(member.id)}
+                          className={styles.btnDelete}
+                          title="Delete Member"
+                          disabled={loading}
+                        >
+                          {loading ? "⏳" : "🗑️"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className={styles.paginationContainer}>
+                <div className={styles.paginationInfo}>
+                  Showing {startIndex + 1} to {Math.min(endIndex, filteredMembers.length)} of {filteredMembers.length} members
+                </div>
+                
+                <div className={styles.paginationControls}>
+                  {/* Previous Button */}
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className={styles.paginationButton}
+                  >
+                    Previous
+                  </button>
+
+                  {/* Page Numbers */}
+                  <div className={styles.pageNumbers}>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => handlePageChange(page)}
+                        className={`${styles.pageButton} ${
+                          currentPage === page ? styles.pageButtonActive : ''
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Next Button */}
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className={styles.paginationButton}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
       {/* Enhanced Popup Modal with Light Background */}
       {showMemberModal && selectedMember && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
-          <div className="bg-white rounded-3xl shadow-2xl border border-gray-200 w-full max-w-6xl max-h-[95vh] overflow-hidden animate-scaleIn">
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
             {/* Header */}
-            <div className="relative p-8 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                    {modalMode === "view" ? "Team Member Details" : "Edit Team Member"}
-                  </h2>
-                  <p className="text-gray-600 text-lg">
-                    {modalMode === "view" ? "Complete information about the team member" : "Update team member information"}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowMemberModal(false)}
-                  className="p-3 text-gray-400 hover:text-gray-600 hover:bg-white rounded-2xl transition-all duration-200 disabled:opacity-50 group shadow-sm"
-                  disabled={loading}
-                >
-                  <span className="text-2xl group-hover:scale-110 transition-transform">×</span>
-                </button>
+            <div className={styles.modalHeader}>
+              <div>
+                <h2>
+                  {modalMode === "view" ? "Team Member Details" : "Edit Team Member"}
+                </h2>
+                <p className={styles.modalSubtitle}>
+                  {modalMode === "view" ? "Complete information about the team member" : "Update team member information"}
+                </p>
               </div>
+              <button
+                onClick={() => setShowMemberModal(false)}
+                className={styles.closeButton}
+                disabled={loading}
+              >
+                ×
+              </button>
             </div>
 
-            <div className="overflow-y-auto max-h-[calc(95vh-140px)]">
-              <div className="p-8">
-                {modalMode === "view" ? (
-                  <div className="space-y-8">
-                    {/* Personal Information */}
-                    <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm">
-                      <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                        <div className="w-2 h-8 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
-                        Personal Information
-                      </h3>
-                      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {[
-                          { label: "Full Name", value: selectedMember.fullName },
-                          { label: "NIC", value: selectedMember.nic },
-                          { label: "Birth Date", value: new Date(selectedMember.birthDate).toLocaleDateString() },
-                          { label: "Age", value: `${selectedMember.age} years` },
-                          { label: "Contact", value: selectedMember.contactNo },
-                          { label: "City", value: selectedMember.city }
-                        ].map((item, index) => (
-                          <div key={index} className="space-y-3">
-                            <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                              {item.label}
-                            </label>
-                            <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 text-lg font-medium hover:bg-gray-100 transition-colors duration-200">
-                              {item.value}
-                            </div>
+            <div className={styles.modalBody}>
+              {modalMode === "view" ? (
+                <div className={styles.viewContent}>
+                  {/* Personal Information */}
+                  <div className={styles.formSection}>
+                    <h3 className={styles.formSectionTitle}>
+                      Personal Information
+                    </h3>
+                    <div className={styles.detailGrid}>
+                      {[
+                        { label: "Full Name", value: selectedMember.fullName },
+                        { label: "NIC", value: selectedMember.nic },
+                        { label: "Birth Date", value: new Date(selectedMember.birthDate).toLocaleDateString() },
+                        { label: "Age", value: `${selectedMember.age} years` },
+                        { label: "Contact", value: selectedMember.contactNo },
+                        { label: "City", value: selectedMember.city }
+                      ].map((item, index) => (
+                        <div key={index} className={styles.detailItem}>
+                          <label className={styles.detailLabel}>
+                            {item.label}
+                          </label>
+                          <div className={styles.detailValue}>
+                            {item.value}
                           </div>
-                        ))}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Work Information */}
+                  <div className={styles.formSection}>
+                    <h3 className={styles.formSectionTitle}>
+                      Work Information
+                    </h3>
+                    <div className={styles.detailGrid}>
+                      {[
+                        { label: "Team", value: getTeamName(selectedMember.teamId) },
+                        { label: "Specialization", value: selectedMember.specialization },
+                        { label: "Working Hours", value: `${selectedMember.workingHoursPerDay} hours/day` },
+                        { label: "Joined Date", value: new Date(selectedMember.joinedDate).toLocaleDateString() },
+                      ].map((item, index) => (
+                        <div key={index} className={styles.detailItem}>
+                          <label className={styles.detailLabel}>
+                            {item.label}
+                          </label>
+                          <div className={styles.detailValue}>
+                            {item.value}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Address */}
+                  <div className={styles.formSection}>
+                    <h3 className={styles.formSectionTitle}>
+                      Address Information
+                    </h3>
+                    <div className={styles.detailItem}>
+                      <label className={styles.detailLabel}>
+                        Full Address
+                      </label>
+                      <div className={styles.detailValue}>
+                        {selectedMember.address}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Supervisor */}
+                  {selectedMember.supervisorName && (
+                    <div className={styles.formSection}>
+                      <h3 className={styles.formSectionTitle}>
+                        Supervisor Information
+                      </h3>
+                      <div className={styles.detailItem}>
+                        <label className={styles.detailLabel}>
+                          Supervisor Name
+                        </label>
+                        <div className={styles.detailValue}>
+                          {selectedMember.supervisorName}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <form onSubmit={(e) => {
+                  e.preventDefault()
+                  handleSaveMember(selectedMember)
+                }} className={styles.editForm}>
+                  <div className={styles.formGrid}>
+                    {/* Personal Information */}
+                    <div className={styles.formGroup}>
+                      <h3 className={styles.formSectionTitle}>
+                        Personal Details
+                      </h3>
+                      
+                      <div className={styles.formFields}>
+                        <div className={styles.formField}>
+                          <label className={styles.formLabel}>
+                            Full Name *
+                          </label>
+                          <input
+                            type="text"
+                            value={selectedMember.fullName || ""}
+                            onChange={(e) => setSelectedMember({
+                              ...selectedMember,
+                              fullName: e.target.value
+                            })}
+                            className={styles.formInput}
+                            required
+                            disabled={loading}
+                            placeholder="Enter full name"
+                          />
+                        </div>
+
+                        <div className={styles.formField}>
+                          <label className={styles.formLabel}>
+                            NIC *
+                          </label>
+                          <input
+                            type="text"
+                            value={selectedMember.nic || ""}
+                            onChange={(e) => setSelectedMember({
+                              ...selectedMember,
+                              nic: e.target.value
+                            })}
+                            className={styles.formInput}
+                            required
+                            disabled={loading}
+                            placeholder="Enter NIC number"
+                          />
+                        </div>
+
+                        <div className={styles.formField}>
+                          <label className={styles.formLabel}>
+                            Contact Number *
+                          </label>
+                          <input
+                            type="tel"
+                            value={selectedMember.contactNo || ""}
+                            onChange={(e) => setSelectedMember({
+                              ...selectedMember,
+                              contactNo: e.target.value
+                            })}
+                            className={styles.formInput}
+                            required
+                            disabled={loading}
+                            placeholder="Enter contact number"
+                          />
+                        </div>
                       </div>
                     </div>
 
                     {/* Work Information */}
-                    <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm">
-                      <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                        <div className="w-2 h-8 bg-gradient-to-b from-green-500 to-green-600 rounded-full"></div>
-                        Work Information
+                    <div className={styles.formGroup}>
+                      <h3 className={styles.formSectionTitle}>
+                        Work Details
                       </h3>
-                      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {[
-                          { label: "Team", value: getTeamName(selectedMember.teamId) },
-                          { label: "Specialization", value: selectedMember.specialization },
-                          { label: "Working Hours", value: `${selectedMember.workingHoursPerDay} hours/day` },
-                          { label: "Joined Date", value: new Date(selectedMember.joinedDate).toLocaleDateString() },
-                        ].map((item, index) => (
-                          <div key={index} className="space-y-3">
-                            <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                              {item.label}
-                            </label>
-                            <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 text-lg font-medium hover:bg-gray-100 transition-colors duration-200">
-                              {item.value}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Address */}
-                    <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm">
-                      <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                        <div className="w-2 h-8 bg-gradient-to-b from-purple-500 to-purple-600 rounded-full"></div>
-                        Address Information
-                      </h3>
-                      <div className="space-y-3">
-                        <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                          Full Address
-                        </label>
-                        <div className="p-6 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 text-lg font-medium min-h-[100px] hover:bg-gray-100 transition-colors duration-200 leading-relaxed">
-                          {selectedMember.address}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Supervisor */}
-                    {selectedMember.supervisorName && (
-                      <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm">
-                        <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                          <div className="w-2 h-8 bg-gradient-to-b from-orange-500 to-orange-600 rounded-full"></div>
-                          Supervisor Information
-                        </h3>
-                        <div className="space-y-3">
-                          <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                            Supervisor Name
+                      
+                      <div className={styles.formFields}>
+                        <div className={styles.formField}>
+                          <label className={styles.formLabel}>
+                            Team *
                           </label>
-                          <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 text-lg font-medium hover:bg-gray-100 transition-colors duration-200">
-                            {selectedMember.supervisorName}
-                          </div>
+                          <select
+                            value={String(selectedMember.teamId) || ""}
+                            onChange={(e) => setSelectedMember({
+                              ...selectedMember,
+                              teamId: e.target.value
+                            })}
+                            className={styles.formSelect}
+                            required
+                            disabled={loading}
+                          >
+                            {teamsArray.map(team => (
+                              <option key={team.id} value={team.id}>
+                                {team.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className={styles.formField}>
+                          <label className={styles.formLabel}>
+                            Specialization *
+                          </label>
+                          <select
+                            value={selectedMember.specialization || ""}
+                            onChange={(e) => setSelectedMember({
+                              ...selectedMember,
+                              specialization: e.target.value
+                            })}
+                            className={styles.formSelect}
+                            required
+                            disabled={loading}
+                          >
+                            {Object.entries(SpecializationEnum).map(([key, value]) => (
+                              <option key={value} value={value}>
+                                {key.charAt(0) + key.slice(1).toLowerCase()}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className={styles.formField}>
+                          <label className={styles.formLabel}>
+                            Working Hours *
+                          </label>
+                          <select
+                            value={selectedMember.workingHoursPerDay || ""}
+                            onChange={(e) => setSelectedMember({
+                              ...selectedMember,
+                              workingHoursPerDay: e.target.value
+                            })}
+                            className={styles.formSelect}
+                            required
+                            disabled={loading}
+                          >
+                            <option value="4">4 hours</option>
+                            <option value="6">6 hours</option>
+                            <option value="8">8 hours</option>
+                            <option value="10">10 hours</option>
+                            <option value="12">12 hours</option>
+                          </select>
+                        </div>
+
+                        <div className={styles.formField}>
+                          <label className={styles.formLabel}>
+                            City *
+                          </label>
+                          <select
+                            value={selectedMember.city || ""}
+                            onChange={(e) => setSelectedMember({
+                              ...selectedMember,
+                              city: e.target.value
+                            })}
+                            className={styles.formSelect}
+                            required
+                            disabled={loading}
+                          >
+                            {Object.entries(CityEnum).map(([key, value]) => (
+                              <option key={value} value={value}>
+                                {key.charAt(0) + key.slice(1).toLowerCase()}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       </div>
-                    )}
+                    </div>
                   </div>
-                ) : (
-                  <form onSubmit={(e) => {
-                    e.preventDefault()
-                    handleSaveMember(selectedMember)
-                  }} className="space-y-8">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                      {/* Personal Information */}
-                      <div className="space-y-6">
-                        <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-3">
-                          <div className="w-2 h-8 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
-                          Personal Details
-                        </h3>
-                        
-                        <div className="space-y-4">
-                          <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-3">
-                              Full Name *
-                            </label>
-                            <input
-                              type="text"
-                              value={selectedMember.fullName || ""}
-                              onChange={(e) => setSelectedMember({
-                                ...selectedMember,
-                                fullName: e.target.value
-                              })}
-                              className="w-full px-4 py-4 bg-white border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-lg shadow-sm"
-                              required
-                              disabled={loading}
-                              placeholder="Enter full name"
-                            />
-                          </div>
 
-                          <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-3">
-                              NIC *
-                            </label>
-                            <input
-                              type="text"
-                              value={selectedMember.nic || ""}
-                              onChange={(e) => setSelectedMember({
-                                ...selectedMember,
-                                nic: e.target.value
-                              })}
-                              className="w-full px-4 py-4 bg-white border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-lg shadow-sm"
-                              required
-                              disabled={loading}
-                              placeholder="Enter NIC number"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-3">
-                              Contact Number *
-                            </label>
-                            <input
-                              type="tel"
-                              value={selectedMember.contactNo || ""}
-                              onChange={(e) => setSelectedMember({
-                                ...selectedMember,
-                                contactNo: e.target.value
-                              })}
-                              className="w-full px-4 py-4 bg-white border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-lg shadow-sm"
-                              required
-                              disabled={loading}
-                              placeholder="Enter contact number"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Work Information */}
-                      <div className="space-y-6">
-                        <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-3">
-                          <div className="w-2 h-8 bg-gradient-to-b from-green-500 to-green-600 rounded-full"></div>
-                          Work Details
-                        </h3>
-                        
-                        <div className="space-y-4">
-                          <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-3">
-                              Team *
-                            </label>
-                            <select
-                              value={String(selectedMember.teamId) || ""}
-                              onChange={(e) => setSelectedMember({
-                                ...selectedMember,
-                                teamId: e.target.value
-                              })}
-                              className="w-full px-4 py-4 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-lg shadow-sm"
-                              required
-                              disabled={loading}
-                            >
-                              {teamsArray.map(team => (
-                                <option key={team.id} value={team.id}>
-                                  {team.name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-3">
-                              Specialization *
-                            </label>
-                            <select
-                              value={selectedMember.specialization || ""}
-                              onChange={(e) => setSelectedMember({
-                                ...selectedMember,
-                                specialization: e.target.value
-                              })}
-                              className="w-full px-4 py-4 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-lg shadow-sm"
-                              required
-                              disabled={loading}
-                            >
-                              {Object.entries(SpecializationEnum).map(([key, value]) => (
-                                <option key={value} value={value}>
-                                  {key.charAt(0) + key.slice(1).toLowerCase()}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-3">
-                              Working Hours *
-                            </label>
-                            <select
-                              value={selectedMember.workingHoursPerDay || ""}
-                              onChange={(e) => setSelectedMember({
-                                ...selectedMember,
-                                workingHoursPerDay: e.target.value
-                              })}
-                              className="w-full px-4 py-4 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-lg shadow-sm"
-                              required
-                              disabled={loading}
-                            >
-                              <option value="4">4 hours</option>
-                              <option value="6">6 hours</option>
-                              <option value="8">8 hours</option>
-                              <option value="10">10 hours</option>
-                              <option value="12">12 hours</option>
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-3">
-                              City *
-                            </label>
-                            <select
-                              value={selectedMember.city || ""}
-                              onChange={(e) => setSelectedMember({
-                                ...selectedMember,
-                                city: e.target.value
-                              })}
-                              className="w-full px-4 py-4 bg-white border-2 border-gray-300 rounded-xl text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-lg shadow-sm"
-                              required
-                              disabled={loading}
-                            >
-                              {Object.entries(CityEnum).map(([key, value]) => (
-                                <option key={value} value={value}>
-                                  {key.charAt(0) + key.slice(1).toLowerCase()}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Address */}
-                    <div className="space-y-6">
-                      <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-3">
-                        <div className="w-2 h-8 bg-gradient-to-b from-purple-500 to-purple-600 rounded-full"></div>
-                        Address Information
-                      </h3>
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-3">
-                          Full Address *
-                        </label>
-                        <textarea
-                          value={selectedMember.address || ""}
-                          onChange={(e) => setSelectedMember({
-                            ...selectedMember,
-                            address: e.target.value
-                          })}
-                          rows={4}
-                          className="w-full px-4 py-4 bg-white border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-lg shadow-sm resize-vertical"
-                          required
-                          disabled={loading}
-                          placeholder="Enter complete address"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-4 justify-end pt-8 border-t border-gray-200">
-                      <button
-                        type="button"
-                        onClick={() => setShowMemberModal(false)}
-                        className="px-8 py-4 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 border border-gray-300 hover:border-gray-400 transition-all duration-200 disabled:opacity-50 text-lg shadow-sm hover:shadow-md"
+                  {/* Address */}
+                  <div className={styles.formGroup}>
+                    <h3 className={styles.formSectionTitle}>
+                      Address Information
+                    </h3>
+                    <div className={styles.formField}>
+                      <label className={styles.formLabel}>
+                        Full Address *
+                      </label>
+                      <textarea
+                        value={selectedMember.address || ""}
+                        onChange={(e) => setSelectedMember({
+                          ...selectedMember,
+                          address: e.target.value
+                        })}
+                        rows={4}
+                        className={styles.formTextarea}
+                        required
                         disabled={loading}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        className="px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold rounded-xl hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200 disabled:opacity-50 text-lg shadow-lg shadow-blue-500/25"
-                        disabled={loading}
-                      >
-                        {loading ? (
-                          <span className="flex items-center gap-2">
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                            Saving Changes...
-                          </span>
-                        ) : (
-                          "Save Changes"
-                        )}
-                      </button>
+                        placeholder="Enter complete address"
+                      />
                     </div>
-                  </form>
-                )}
-              </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className={styles.formActions}>
+                    <button
+                      type="button"
+                      onClick={() => setShowMemberModal(false)}
+                      className={styles.btnSecondary}
+                      disabled={loading}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className={styles.btnPrimary}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <span className={styles.loadingText}>
+                          <div className={styles.loadingSpinnerSmall}></div>
+                          Saving Changes...
+                        </span>
+                      ) : (
+                        "Save Changes"
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
 
             {/* View Mode Actions */}
             {modalMode === "view" && (
-              <div className="flex gap-4 justify-end p-8 border-t border-gray-200 bg-gray-50">
+              <div className={styles.modalFooter}>
                 <button
                   onClick={() => setModalMode("edit")}
-                  className="px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold rounded-xl hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200 disabled:opacity-50 text-lg shadow-lg shadow-blue-500/25"
+                  className={styles.btnPrimary}
                   disabled={loading}
                 >
                   Edit Member
                 </button>
                 <button
                   onClick={() => setShowMemberModal(false)}
-                  className="px-8 py-4 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 border border-gray-300 hover:border-gray-400 transition-all duration-200 disabled:opacity-50 text-lg shadow-sm hover:shadow-md"
+                  className={styles.btnSecondary}
                   disabled={loading}
                 >
                   Close

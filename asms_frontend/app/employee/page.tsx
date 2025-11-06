@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import styles from "../employee/employee.module.css";
 import Link from 'next/link';
 import { teams as sharedTeams, members as sharedMembers } from "../lib/teamData";
-import { getToken } from '../utils/auth';
+import { getToken, getCurrentUser } from '../utils/auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -29,6 +29,16 @@ type AppointmentStats = {
   inService: number;
   completed: number;
 };
+
+// Employee interface
+interface Employee {
+  id: number;
+  name: string;
+  email?: string;
+  role?: string;
+  position?: string;
+  department?: string;
+}
 
 function WorkloadOverview({ stats }: { stats: AppointmentStats }) {
   const total = stats.total || 0;
@@ -81,7 +91,10 @@ export default function EmployeeDashboardPage() {
   const [backendTeams, setBackendTeams] = useState<any[]>([]);
   const [backendMembers, setBackendMembers] = useState<any[]>([]);
   const [backendTeamStats, setBackendTeamStats] = useState<any[]>([]);
-  const [mounted, setMounted] = useState(false); // Fix hydration issue
+  const [mounted, setMounted] = useState(false);
+  const [employee, setEmployee] = useState<Employee | null>(null);
+  const [employeeLoading, setEmployeeLoading] = useState(true);
+  const [employeeError, setEmployeeError] = useState<string | null>(null);
   
   // ✅ State for appointments and stats
   const [appointments, setAppointments] = useState<AppointmentDTO[]>([]);
@@ -100,6 +113,82 @@ export default function EmployeeDashboardPage() {
     setMounted(true);
   }, []);
 
+  // Fetch employee data
+  const fetchEmployee = async () => {
+    try {
+      setEmployeeLoading(true);
+      setEmployeeError(null);
+      
+      console.log("Fetching employee profile...");
+      
+      const token = getToken();
+      console.log("JWT Token available:", !!token);
+      
+      if (!token) {
+        throw new Error("No authentication token found. Please log in again.");
+      }
+
+      const response = await fetch(`${API_URL}/api/employee/current`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      console.log("Employee response status:", response.status, response.statusText);
+
+      if (response.ok) {
+        const userData = await response.json();
+        console.log("Employee data received:", userData);
+
+        const employeeInfo: Employee = {
+          id: userData.id || 1,
+          name: userData.firstName && userData.lastName 
+            ? `${userData.firstName} ${userData.lastName}`
+            : userData.username || userData.name || "Current Employee",
+          email: userData.email,
+          role: userData.role,
+          position: userData.position,
+          department: userData.department
+        }
+        
+        setEmployee(employeeInfo);
+        console.log("Employee info set:", employeeInfo);
+      } else if (response.status === 401) {
+        const errorMessage = "Token expired or invalid. Please log in again.";
+        throw new Error(errorMessage);
+      } else {
+        const errorText = await response.text();
+        throw new Error(`Server returned ${response.status}: ${errorText}`);
+      }
+      
+    } catch (error) {
+      console.error("Error fetching employee:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      setEmployeeError(errorMessage);
+      
+      const storedUser = getCurrentUser();
+      if (storedUser) {
+        const fallbackEmployee: Employee = {
+          id: storedUser.id || 1,
+          name: storedUser.name || storedUser.username || "Current Employee",
+          email: storedUser.email,
+          role: storedUser.role
+        }
+        setEmployee(fallbackEmployee);
+      } else {
+        const fallbackEmployee: Employee = {
+          id: 1,
+          name: "Current Employee"
+        }
+        setEmployee(fallbackEmployee);
+      }
+    } finally {
+      setEmployeeLoading(false);
+    }
+  };
+
   // ✅ Fetch appointments and calculate stats from backend
   useEffect(() => {
     let mounted = true;
@@ -110,6 +199,9 @@ export default function EmployeeDashboardPage() {
     }
 
     (async () => {
+      // Fetch employee data first
+      await fetchEmployee();
+
       // ✅ Fetch appointments
       try {
         const appointmentsResp = await fetch(`${API_URL}/api/employee/appointments`, {
@@ -206,10 +298,67 @@ export default function EmployeeDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <header className="mb-4">
-        <h1 className="text-2xl font-bold">Welcome!</h1>
-        <p className="text-gray-500 mt-1">Manage your appointments and tasks.</p>
-      </header>
+      {/* Welcome Header with Glass Effect */}
+      <div className="relative rounded-2xl p-8 shadow-xl overflow-hidden">
+        {/* Glass effect background */}
+        <div className="absolute rounded-2xl"></div>
+        
+        {/* Subtle background pattern */}
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.15)_1px,transparent_0)] bg-[length:20px_20px]"></div>
+        
+        <div className="relative z-10 flex items-center justify-between">
+          <div className="text-white">
+            {employeeLoading ? (
+              <div className="flex items-center space-x-3">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                <span className="text-lg">Loading your profile...</span>
+              </div>
+            ) : employeeError ? (
+              <div>
+                <h2 className="text-2xl font-bold mb-2">Welcome!</h2>
+              </div>
+            ) : employee ? (
+              <div>
+                <div className="text-3xl font-bold mb-3  text-blue-1000">
+                  <small>Welcome,</small> {employee.name}! 
+                </div>
+               
+                <div className="space-y-1 text-blue-800/90">
+                  <p className="text-lg font-medium">
+                    {employee.position || 'Team Manager'}
+                    {employee.department && ` • ${employee.department}`}
+                  </p>
+                  {employee.email && (
+                    <p className="text-gray-500/80">{employee.email}</p>
+                  )}
+                  <p className="text-sm text-gray-800/80">Employee ID: {employee.id}</p>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <h2 className="text-2xl font-bold mb-2">Welcome!</h2>
+                <p className="text-blue-100/80">Manage your appointments and tasks</p>
+              </div>
+            )}
+          </div>
+          
+          {/* Stats Overview in Welcome Header */}
+          <div className="grid grid-cols-3 gap-6 text-center">
+            <div className="text-gray-500">
+              <div className="text-2xl font-bold ">{appointmentStats.inService}</div>
+              <div className="text-sm text-blue-900/80 font-medium">In Service</div>
+            </div>
+            <div className="text-gray-500">
+              <div className="text-2xl font-bold">{appointmentStats.completed}</div>
+              <div className="text-sm  text-blue-900/80 font-medium">Completed</div>
+            </div>
+            <div className="text-gray-500">
+              <div className="text-2xl font-bold">{appointmentStats.confirmed}</div>
+              <div className="text-sm  text-blue-900/80 font-medium">Confirmed</div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* ✅ My Appointments Section */}
       <section className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl shadow-sm border border-blue-100">
@@ -279,7 +428,7 @@ export default function EmployeeDashboardPage() {
       </section>
 
       {/* ✅ Today's Schedule */}
-      <section className="bg-white p-6 rounded-lg shadow-sm">
+      <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
         <div className="flex items-start justify-between mb-3">
           <div>
             <h3 className="text-lg font-semibold">Today's Schedule</h3>
@@ -442,4 +591,3 @@ export default function EmployeeDashboardPage() {
     </div>
   );
 }
-

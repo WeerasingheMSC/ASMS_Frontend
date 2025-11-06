@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import projStyles from "./projects.module.css";
 import Link from "next/link";
 import { getMembersByTeamName, Member } from "../../lib/teamData";
+import { getToken } from "../../utils/auth";
 
 type Project = {
   name: string;
@@ -19,16 +20,20 @@ type Project = {
 };
 
 export default function ProjectsTable({ projects }: { projects: Project[] }) {
+  const getInitials = (name: string | undefined) => {
+    if (!name) return "T";
+    const parts = name.split(/\s+/).filter(Boolean);
+    return parts.length === 0 ? "T" : parts.map(p => p.charAt(0).toUpperCase()).slice(0,2).join("");
+  };
   const [rows, setRows] = useState<Project[]>(projects);
   const [openTeamIndex, setOpenTeamIndex] = useState<number | null>(null);
   const [openTeamUpIndex, setOpenTeamUpIndex] = useState<number | null>(null);
+  const [dropdownStyles, setDropdownStyles] = useState<Record<number, React.CSSProperties>>({});
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  // Default fallback team list when a row doesn't include a team array
-  const defaultTeam = [
-    { id: "member-1", name: "Mike Johnson" },
-    { id: "member-2", name: "Sarah Williams" },
-    { id: "member-3", name: "Tom Anderson" },
-  ];
+  const [rowSpecs, setRowSpecs] = useState<Record<number, string>>({});
+  // backend teams and members (fetched when user is signed in)
+  const [teams, setTeams] = useState<any[]>([]);
+  const [backendMembers, setBackendMembers] = useState<any[]>([]);
   // tempSelected holds selections while dropdown is open (so user can Confirm/Cancel)
   const [tempSelected, setTempSelected] = useState<string[]>([]);
   // keep internal rows in sync when parent passes a new projects prop (e.g., filtered list)
@@ -37,11 +42,59 @@ export default function ProjectsTable({ projects }: { projects: Project[] }) {
     const withCompleted = projects.map((p) => ({
       ...p,
       completedDate: (p as any).completedDate ?? null,
-      team: (p as any).team ?? (p as any).team ?? [],
+      team: (p as any).team ?? [],
       selectedTeam: (p as any).selectedTeam ?? (p as any).selectedTeam ?? [],
     }));
     setRows(withCompleted);
+    // initialize per-row specialization to 'All'
+    const specsInit: Record<number, string> = {};
+    withCompleted.forEach((p, idx) => { specsInit[idx] = 'All'; });
+    setRowSpecs(specsInit);
   }, [projects]);
+
+  // fetch teams and members from backend when signed in; fall back to local teamData when not available
+  useEffect(() => {
+    let mounted = true;
+    const token = getToken();
+    if (!token) return;
+
+    (async () => {
+      try {
+        const resp = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/employee/teams/all`, { headers: { Authorization: `Bearer ${token}` } });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (!mounted) return;
+          setTeams(Array.isArray(data) ? data : (data.data || []));
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      try {
+        const mResp = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/employee/allteam`, { headers: { Authorization: `Bearer ${token}` } });
+        if (mResp.ok) {
+          const mData = await mResp.json();
+          if (!mounted) return;
+          setBackendMembers(Array.isArray(mData) ? mData : (mData.data || []));
+        }
+      } catch (e) {
+        // ignore
+      }
+    })();
+
+    return () => { mounted = false; };
+  }, []);
+
+  // derive specialization list: prefer backend teams' specialization field, else fallback
+  const specializations = React.useMemo(() => {
+    if (teams && teams.length > 0) {
+      const set = new Set<string>();
+      teams.forEach((t:any) => set.add((t.specialization || t.speciality || 'General')));
+      return ['All', ...Array.from(set)];
+    }
+    // fallback static list
+    return ['All', 'Powertrain', 'Electrical', 'Brakes'];
+  }, [teams]);
   // No internal search UI - table renders current rows
 
   const statusBadgeClass = (status: string) => {
@@ -131,6 +184,16 @@ export default function ProjectsTable({ projects }: { projects: Project[] }) {
             const spaceBelow = window.innerHeight - rect.bottom;
             const openUp = spaceBelow < dropdownEstimate && rect.top > dropdownEstimate;
             setOpenTeamUpIndex(openUp ? index : null);
+            // set fixed-position style so dropdown won't be clipped by ancestors
+            setDropdownStyles((prev) => ({
+              ...prev,
+              [index]: {
+                position: 'fixed',
+                left: rect.left,
+                top: openUp ? Math.max(8, rect.top - dropdownEstimate) : rect.bottom,
+                minWidth: Math.max(rect.width, 220),
+              },
+            }));
           } else {
             setOpenTeamUpIndex(null);
           }
@@ -140,6 +203,12 @@ export default function ProjectsTable({ projects }: { projects: Project[] }) {
       } else {
         setTempSelected([]);
         setOpenTeamUpIndex(null);
+        // remove stored style when closing
+        setDropdownStyles((prev) => {
+          const copy = { ...prev };
+          delete copy[index];
+          return copy;
+        });
       }
       return next;
     });
@@ -162,7 +231,22 @@ export default function ProjectsTable({ projects }: { projects: Project[] }) {
       row.selectedTeam = Array.isArray(tempSelected) ? [...tempSelected] : [];
       // ensure the row has a team array so selectedTeam ids can be resolved to names
       if (!row.team || row.team.length === 0) {
-        row.team = defaultTeam as any;
+        // try to derive members from backendMembers using row.teamName
+        const teamName = (row as any).teamName as string | undefined;
+        if (teamName) {
+          let mapped: { id: string; name: string }[] = [];
+          if (backendMembers && backendMembers.length > 0) {
+            mapped = backendMembers
+              .filter((m:any) => (m.team === teamName || m.teamName === teamName || m.specialization === teamName))
+              .map((m:any) => ({ id: m.id ?? m.employeeId ?? m.userId ?? String(m.id), name: m.fullName || m.name || m.username || String(m.id) }));
+          }
+          if (mapped.length === 0) {
+            mapped = getMembersByTeamName(teamName).map((m) => ({ id: m.id, name: m.name }));
+          }
+          row.team = mapped as any;
+        } else {
+          row.team = [] as any;
+        }
       }
       copy[rowIndex] = row;
       try {
@@ -290,39 +374,15 @@ export default function ProjectsTable({ projects }: { projects: Project[] }) {
                 <div style={{ position: "relative" }}>
                   <div>
                     <div style={{ marginBottom: 6 }}>
-                      {/* Team selector: choose which team this project belongs to */}
-                      <select
-                        aria-label={`Select team for ${p.name}`}
-                        value={(p as any).teamName || 'All Teams'}
-                        onChange={(e) => {
-                          const teamName = e.target.value;
-                          setRows((prev) => {
-                            const copy = [...prev];
-                            const r = { ...copy[i] } as any;
-                            r.teamName = teamName;
-                            // populate the row.team with members of the selected team
-                            const mapped = getMembersByTeamName(teamName).map((m) => ({ id: m.id, name: m.name }));
-                            r.team = mapped;
-                            copy[i] = r;
-                            try {
-                              localStorage.setItem('asms_projects', JSON.stringify(copy));
-                              window.dispatchEvent(new Event('asms_projects_updated'));
-                            } catch (e) {}
-                            return copy;
-                          });
-                        }}
-                        className={projStyles.teamSelect}
-                      >
-                        {/* small list of teams */}
-                        <option>All Teams</option>
-                        <option>Engine Team</option>
-                        <option>Transmission Team</option>
-                        <option>Electrical Team</option>
-                        <option>Brakes Team</option>
-                      </select>
+                      {/* Display current specialization and team as labels; full selection happens inside the dropdown */}
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <div style={{ fontWeight: 700 }}>{rowSpecs[i] ?? 'All'}</div>
+                        <div style={{ color: '#6b7280' }}>{(p as any).teamName ?? 'Select team'}</div>
+                      </div>
                     </div>
                     <div
                       className={projStyles.teamAvatars}
+                      data-row-index={i}
                       onClick={(e) => toggleTeamDropdown(i, e.currentTarget as HTMLElement)}
                     role="button"
                     tabIndex={0}
@@ -333,23 +393,38 @@ export default function ProjectsTable({ projects }: { projects: Project[] }) {
                   >
                     {/* render selected members as compact chips (initial + short name) */}
                     {(() => {
+                      // derive members for display: prefer explicit p.team, else derive from p.teamName
+                      let allMembers = p.team && p.team.length > 0 ? p.team : [];
+                      const teamName = (p as any).teamName as string | undefined;
+                      if ((!allMembers || allMembers.length === 0) && teamName) {
+                        if (backendMembers && backendMembers.length > 0) {
+                          allMembers = backendMembers
+                            .filter((m:any) => (m.team === teamName || m.teamName === teamName || m.specialization === teamName))
+                            .map((m:any) => ({ id: m.id ?? m.employeeId ?? m.userId ?? String(m.id), name: m.fullName || m.name || String(m.id) }));
+                        }
+                        if (!allMembers || allMembers.length === 0) {
+                          allMembers = getMembersByTeamName(teamName);
+                        }
+                      }
+
                       const assigned = p.selectedTeam && p.selectedTeam.length > 0
-                        ? p.team?.filter((m) => p.selectedTeam?.includes(m.id))
+                        ? (allMembers || []).filter((m:any) => p.selectedTeam?.includes(m.id))
                         : [];
-                      const shown = assigned && assigned.length > 0 ? assigned.slice(0, 3) : (p.team ? p.team.slice(0, 3) : []);
+                      const shown = assigned && assigned.length > 0 ? assigned.slice(0, 3) : (allMembers ? (allMembers as any).slice(0, 3) : []);
+
+                      if (!allMembers || allMembers.length === 0) {
+                        return <div className={projStyles.avatarInitialSmall} title="No members">T</div>;
+                      }
+
                       return (
                         <>
-                          {shown.map((m) => m && (
+                          {shown.map((m: any) => m && (
                             <div key={m.id} className={projStyles.avatarInitialSmall} title={m.name}>
-                              {m.name.charAt(0)}
+                              {getInitials(m.name)}
                             </div>
                           ))}
                           {assigned && assigned.length > 3 && (
                             <div className={projStyles.memberChipOverflow}>+{assigned.length - 3}</div>
-                          )}
-                          {/* fallback when no team members */}
-                          {(!p.team || p.team.length === 0) && (
-                            <div className={projStyles.avatarInitialSmall} title="No members">T</div>
                           )}
                         </>
                       );
@@ -358,31 +433,143 @@ export default function ProjectsTable({ projects }: { projects: Project[] }) {
 
                   {openTeamIndex === i && (
                     <div className={`${projStyles.teamDropdown} ${openTeamUpIndex === i ? projStyles.teamDropdownUp : ""}`} role="dialog" aria-label={`Select team members for ${p.name}`}>
+                      {/* Top: Specialization + Team selects inside the dropdown */}
+                      <div style={{ padding: '6px 8px', borderBottom: '1px solid #f1f5f9', marginBottom: 8 }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <select
+                            aria-label={`Select specialization for ${p.name}`}
+                            value={rowSpecs[i] ?? 'All'}
+                            onChange={(e) => {
+                              const spec = e.target.value;
+                              setRowSpecs((prev) => ({ ...prev, [i]: spec }));
+                              // clear team selection when specialization changes
+                              setRows((prev) => {
+                                const copy = [...prev];
+                                const r = { ...copy[i] } as any;
+                                r.teamName = '';
+                                r.team = [];
+                                r.selectedTeam = [];
+                                copy[i] = r;
+                                try { localStorage.setItem('asms_projects', JSON.stringify(copy)); window.dispatchEvent(new Event('asms_projects_updated')); } catch (e) {}
+                                return copy;
+                              });
+                              setTempSelected([]);
+                            }}
+                            className={projStyles.teamSelect}
+                          >
+                            {specializations.map((s) => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
+                          </select>
+
+                          <select
+                              aria-label={`Select team for ${p.name}`}
+                              value={(p as any).teamName ?? ''}
+                              onChange={(e) => {
+                              const teamName = e.target.value;
+                              const alreadySelected = rows[i]?.selectedTeam ?? [];
+                              // derive members for the selected team
+                              let mapped: { id: string; name: string }[] = [];
+                              if (backendMembers && backendMembers.length > 0) {
+                                mapped = backendMembers
+                                  .filter((m:any) => (m.team === teamName || m.teamName === teamName || m.specialization === teamName))
+                                  .map((m:any) => ({ id: String(m.id ?? m.employeeId ?? m.userId ?? m.id), name: m.fullName || m.name || m.username || String(m.id) }));
+                              }
+                              if (mapped.length === 0) {
+                                mapped = getMembersByTeamName(teamName).map((m) => ({ id: m.id, name: m.name }));
+                              }
+
+                              setRows((prev) => {
+                                const copy = [...prev];
+                                const r = { ...copy[i] } as any;
+                                r.teamName = teamName;
+                                r.team = mapped;
+                                copy[i] = r;
+                                try { localStorage.setItem('asms_projects', JSON.stringify(copy)); window.dispatchEvent(new Event('asms_projects_updated')); } catch (e) {}
+                                return copy;
+                              });
+
+                              // seed temporary selection so user can confirm
+                                setTempSelected(Array.isArray(alreadySelected) ? [...alreadySelected] : []);
+                                // when team selection occurs programmatically, try to position the dropdown near the avatars
+                                try {
+                                  const el = document.querySelector(`[data-row-index=\"${i}\"]`) as HTMLElement | null;
+                                  if (el) {
+                                    const rect = el.getBoundingClientRect();
+                                    const dropdownEstimate = 260;
+                                    const spaceBelow = window.innerHeight - rect.bottom;
+                                    const openUp = spaceBelow < dropdownEstimate && rect.top > dropdownEstimate;
+                                    setOpenTeamUpIndex(openUp ? i : null);
+                                    setDropdownStyles((prev) => ({
+                                      ...prev,
+                                      [i]: {
+                                        position: 'fixed',
+                                        left: rect.left,
+                                        top: openUp ? Math.max(8, rect.top - dropdownEstimate) : rect.bottom,
+                                        minWidth: Math.max(rect.width, 220),
+                                      }
+                                    }));
+                                  }
+                                } catch (e) {
+                                  // ignore
+                                }
+                            }}
+                            className={projStyles.teamSelect}
+                          >
+                            <option value="">Select team</option>
+                            {teams && teams.length > 0 ? (
+                              teams
+                                .filter((t:any) => (rowSpecs[i] === 'All' || (t.specialization || t.speciality || 'General') === rowSpecs[i]))
+                                .map((t:any) => (
+                                  <option key={t.id ?? t.teamId ?? t.name} value={t.name || t.teamName}>{t.name || t.teamName}</option>
+                                ))
+                            ) : (
+                              (['Engine Team','Transmission Team','Electrical Team','Brakes Team']
+                                .filter((tn) => rowSpecs[i] === 'All' ? true : (
+                                  (rowSpecs[i] === 'Powertrain' && (tn === 'Engine Team' || tn === 'Transmission Team')) ||
+                                  (rowSpecs[i] === 'Electrical' && tn === 'Electrical Team') ||
+                                  (rowSpecs[i] === 'Brakes' && tn === 'Brakes Team')
+                                ))
+                                .map((tn) => <option key={tn} value={tn}>{tn}</option>)
+                              )
+                            )}
+                          </select>
+                        </div>
+                      </div>
+
                       <div className={projStyles.teamList}>
-                        {(() => {
-                          const fallback = [{ id: "member-1", name: "Alice" }, { id: "member-2", name: "Bob" }, { id: "member-3", name: "Cara" }];
-                          let dropdownMembers: { id: string; name: string }[] = [];
-                          if (p.team && p.team.length > 0) {
-                            dropdownMembers = p.team.map((m) => ({ id: String(m.id), name: m.name }));
-                          } else {
+                          {(() => {
                             const teamName = (p as any).teamName as string | undefined;
-                            if (teamName) {
-                              dropdownMembers = getMembersByTeamName(teamName).map((mm: Member) => ({ id: mm.id, name: mm.name }));
-                            } else {
-                              dropdownMembers = fallback;
+                            let dropdownMembers: { id: string; name: string }[] = [];
+                            if (p.team && p.team.length > 0) {
+                              dropdownMembers = p.team.map((m) => ({ id: String(m.id), name: m.name }));
+                            } else if (teamName) {
+                              // prefer backend members if present
+                              if (backendMembers && backendMembers.length > 0) {
+                                dropdownMembers = backendMembers
+                                  .filter((m:any) => (m.team === teamName || m.teamName === teamName || m.specialization === teamName))
+                                  .map((m:any) => ({ id: String(m.id ?? m.employeeId ?? m.userId ?? m.id), name: m.fullName || m.name || String(m.id) }));
+                              }
+                              if (!dropdownMembers || dropdownMembers.length === 0) {
+                                dropdownMembers = getMembersByTeamName(teamName).map((mm: Member) => ({ id: mm.id, name: mm.name }));
+                              }
                             }
-                          }
-                          return dropdownMembers.map((m) => (
-                            <label key={m.id} className={projStyles.teamRow}>
-                              <input
-                                type="checkbox"
-                                checked={!!(tempSelected && tempSelected.includes(m.id))}
-                                onChange={() => handleMemberToggle(i, m.id)}
-                              />
-                              <span style={{ marginLeft: 8 }}>{m.name}</span>
-                            </label>
-                          ));
-                        })()}
+
+                            if (!dropdownMembers || dropdownMembers.length === 0) {
+                              return <div className={projStyles.teamRow}><div style={{ color: '#6b7280' }}>No members for selected team</div></div>;
+                            }
+
+                            return dropdownMembers.map((m) => (
+                              <label key={m.id} className={projStyles.teamRow}>
+                                <input
+                                  type="checkbox"
+                                  checked={!!(tempSelected && tempSelected.includes(m.id))}
+                                  onChange={() => handleMemberToggle(i, m.id)}
+                                />
+                                <span style={{ marginLeft: 8 }}>{m.name}</span>
+                              </label>
+                            ));
+                          })()}
                       </div>
                       <div className={projStyles.teamDropdownFooter}>
                         <button className={projStyles.btnSecondary} onClick={cancelTeamSelection}>Cancel</button>
@@ -488,8 +675,18 @@ export default function ProjectsTable({ projects }: { projects: Project[] }) {
                   <div className={projStyles.modalField}>Assigned Members</div>
                   <div className={projStyles.modalValue}>
                     {(() => {
-                      const fallback = [{ id: "member-1", name: "Alice" }, { id: "member-2", name: "Bob" }, { id: "member-3", name: "Cara" }];
-                      const teamList = selectedProject.team && selectedProject.team.length > 0 ? selectedProject.team : fallback;
+                      const teamName = (selectedProject as any).teamName as string | undefined;
+                      let teamList: { id: string; name: string }[] = [];
+                      if (selectedProject.team && selectedProject.team.length > 0) teamList = selectedProject.team as any;
+                      else if (teamName) {
+                        if (backendMembers && backendMembers.length > 0) {
+                          teamList = backendMembers
+                            .filter((m:any) => (m.team === teamName || m.teamName === teamName || m.specialization === teamName))
+                            .map((m:any) => ({ id: m.id ?? m.employeeId ?? m.userId ?? String(m.id), name: m.fullName || m.name || String(m.id) }));
+                        }
+                        if (!teamList || teamList.length === 0) teamList = getMembersByTeamName(teamName).map((m) => ({ id: m.id, name: m.name }));
+                      }
+
                       if (selectedProject.selectedTeam && selectedProject.selectedTeam.length > 0) {
                         return selectedProject.selectedTeam
                           .map((id) => teamList.find((m) => String(m.id) === String(id))?.name)

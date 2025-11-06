@@ -79,7 +79,7 @@
 .filterCompleted { background: #ecfdf5; color: #065f46; border-color: #bbf7d0; }
 .filterOverdue { background: #fff1f2; color: #9f1239; border-color: #ffd6dd; }
 
-.tableWrap { margin-top: 25px; overflow: hidden; box-shadow: 0 8px 24px rgba(16,24,40,0.06); background: #ffffff; border-radius: 12px; }
+.tableWrap { margin-top: 25px; overflow: visible; box-shadow: 0 8px 24px rgba(16,24,40,0.06); background: #ffffff; border-radius: 12px; }
 .table { width:100%; border-collapse: collapse; }
 .table thead th { background: #152a52; color: #ffffff !important; text-transform: none; font-size: 1.05rem; padding: 20px 20px; text-align: left; border-bottom: none; font-weight:700; }
 .table tbody td { padding: 18px 20px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; color: #374151; }
@@ -114,7 +114,7 @@
 .memberChipOverflow { display:inline-flex; align-items:center; justify-content:center; width:34px; height:26px; border-radius:999px; background:#e6e7ff; color:#3730a3; font-weight:700; }
 
 /* dropdown that appears when clicking team cell */
-.teamDropdown { position: absolute; top: 44px; left: 0; z-index: 9999; background: #ffffff; border: 1px solid #eef2f7; border-radius: 8px; box-shadow: 0 6px 18px rgba(2,6,23,0.08); padding: 8px; min-width: 180px; }
+.teamDropdown { position: absolute; top: 44px; left: 0; z-index: 10050; background: #ffffff; border: 1px solid #eef2f7; border-radius: 8px; box-shadow: 0 6px 18px rgba(2,6,23,0.08); padding: 8px; min-width: 220px; }
 .teamDropdownUp { top: auto; bottom: 44px; }
 .teamRow { display:flex; align-items:center; gap:8px; padding:6px 8px; font-size:0.95rem; color:#0f1724; }
 .teamRow input { width:16px; height:16px; }

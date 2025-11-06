@@ -3,7 +3,9 @@ import React, { useEffect, useState } from "react";
 import styles from "../employee/employee.module.css";
 import projectsApi from "../lib/projectsApi";
 import Link from 'next/link';
-import { teams as sharedTeams, members as sharedMembers, getTeamAverageProductivity } from "../lib/teamData";
+import { teams as sharedTeams, members as sharedMembers } from "../lib/teamData";
+import { getToken } from '../utils/auth';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 type Project = {
   name: string;
@@ -94,6 +96,9 @@ function WorkloadOverview({ projects: initial }: { projects?: Project[] }) {
 
 export default function EmployeeDashboardPage() {
   const [projectsData, setProjectsData] = useState<Project[]>(defaultSample);
+  const [backendTeams, setBackendTeams] = useState<any[]>([]);
+  const [backendMembers, setBackendMembers] = useState<any[]>([]);
+  const [backendTeamStats, setBackendTeamStats] = useState<any[]>([]);
 
   useEffect(() => {
     let mounted = true;
@@ -103,6 +108,47 @@ export default function EmployeeDashboardPage() {
     }).catch(() => {
       // ignore - keep defaults or localStorage fallback handled in helper
     });
+    return () => { mounted = false; };
+  }, []);
+
+  // fetch backend teams/members/stats to show live team overview when available
+  useEffect(() => {
+    let mounted = true;
+    const token = getToken();
+    if (!token) return;
+
+    (async () => {
+      try {
+        const tResp = await fetch(`${API_URL}/api/employee/teams/all`, { headers: { Authorization: `Bearer ${token}` } });
+        if (tResp.ok) {
+          const tData = await tResp.json();
+          if (!mounted) return;
+          setBackendTeams(Array.isArray(tData) ? tData : (tData.data || []));
+        }
+      } catch (e) {}
+
+      try {
+        const sResp = await fetch(`${API_URL}/api/employee/all-teams-stats`, { headers: { Authorization: `Bearer ${token}` } });
+        if (sResp.ok) {
+          const sData = await sResp.json();
+          if (!mounted) return;
+          setBackendTeamStats(Array.isArray(sData) ? sData : (sData.data || []));
+        }
+      } catch (e) {}
+
+      try {
+        const mResp = await fetch(`${API_URL}/api/employee/allteam`, { headers: { Authorization: `Bearer ${token}` } });
+        if (mResp.ok) {
+          const mData = await mResp.json();
+          if (!mounted) return;
+          const rawMembers = Array.isArray(mData) ? mData : (mData.data || []);
+          // normalize minimal fields
+          const members = rawMembers.map((m: any) => ({ id: m.id ?? m.employeeId ?? m.userId, name: m.fullName || m.name || `${m.firstName || ''} ${m.lastName || ''}`.trim(), team: m.team || m.teamName || m.team_name, productivity: m.productivity ?? m.productivityScore ?? null }));
+          setBackendMembers(members);
+        }
+      } catch (e) {}
+    })();
+
     return () => { mounted = false; };
   }, []);
 
@@ -339,46 +385,99 @@ export default function EmployeeDashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {sharedTeams.filter((t) => t.id !== 'all').map((t) => {
-              const membersOfTeam = sharedMembers.filter((m) => m.team === t.name);
-              const membersCount = membersOfTeam.length;
-              const projectsOfTeam = projectsData.filter((p) => ((p as any).teamName || '') === t.name).length;
-              const avgProd = getTeamAverageProductivity(t.name);
+            {(() => {
+              // Build teams list: prefer backendTeams, then sharedTeams, then derive from projects
+              const teamsList: any[] = (backendTeams && backendTeams.length > 0)
+                ? backendTeams
+                : (sharedTeams && sharedTeams.length > 0)
+                  ? sharedTeams.filter((t:any)=> t.id !== 'all')
+                  : Array.from(new Set(projectsData.map((p:any) => (p.teamName || p.team || '').trim()).filter(Boolean))).map((name:any) => ({ id: name, name }));
 
-              let fillClass = 'bg-orange-400';
-              if (avgProd >= 95) fillClass = 'bg-green-500';
-              else if (avgProd >= 90) fillClass = 'bg-teal-500';
-              else if (avgProd >= 85) fillClass = 'bg-yellow-400';
+              return teamsList.map((t:any) => {
+                const teamName = t.name || t.teamName || t;
 
-              return (
-                <Link
-                  key={t.id}
-                  href={`/employee/team_analysis?team=${encodeURIComponent(t.name)}`}
-                  className="block"
-                  aria-label={`View ${t.name} details`}
-                >
-                  <div className="bg-white p-6 rounded-md shadow-sm hover:shadow-lg transition-shadow cursor-pointer">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="text-sm font-medium text-gray-800">{t.name}</div>
-                        <div className="text-xs text-gray-500">{membersCount} members • {projectsOfTeam} projects</div>
+                // members: prefer backendMembers then sharedMembers
+                const membersOfTeam = (backendMembers && backendMembers.length>0)
+                  ? backendMembers.filter((m:any)=> String((m.team||m.teamName||'')).trim() === String(teamName).trim())
+                  : (sharedMembers && sharedMembers.length>0)
+                    ? sharedMembers.filter((m:any) => String(m.team).trim() === String(teamName).trim())
+                    : [];
+
+                const membersCount = membersOfTeam.length || (t.totalMembers ?? 0);
+
+                const projectsOfTeam = projectsData.filter((p:any) => (String((p as any).teamName || p.team || '').trim()) === String(teamName).trim()).length;
+
+                // prefer backend team stats when available
+                let avgProd = 0;
+                const stat = backendTeamStats.find((s:any)=> {
+                  const sName = String(s.teamName || s.team_name || s.name || '').trim();
+                  return sName && sName === String(teamName).trim() || String(s.teamId || s.team_id || s.id || '').trim() === String(t.id || '').trim();
+                });
+
+                if (stat) {
+                  avgProd = Number(stat.averageProductivity ?? stat.avgProductivity ?? stat.avg ?? stat.average ?? stat.productivity ?? 0) || 0;
+                } else if (membersOfTeam && membersOfTeam.length > 0) {
+                  const total = membersOfTeam.reduce((acc:any, m:any) => acc + (Number(m.productivity) || 0), 0);
+                  avgProd = membersOfTeam.length ? Math.round(total / membersOfTeam.length) : 0;
+                } else {
+                  // fallback: compute from average project progress for this team
+                  const teamProjects = projectsData.filter((p:any) => (String((p as any).teamName || p.team || '').trim()) === String(teamName).trim());
+                  if (teamProjects.length > 0) {
+                    const totalProgress = teamProjects.reduce((acc:any, p:any) => acc + (Number(p.progress) || 0), 0);
+                    avgProd = Math.round(totalProgress / teamProjects.length);
+                  } else {
+                    // No team-specific projects found — fall back to global average project progress so the dashboard shows a meaningful percentage
+                    const allProjectsWithProgress = projectsData.filter((p:any) => typeof p.progress === 'number');
+                    if (allProjectsWithProgress.length > 0) {
+                      const totalProgress = allProjectsWithProgress.reduce((acc:any, p:any) => acc + (Number(p.progress) || 0), 0);
+                      avgProd = Math.round(totalProgress / allProjectsWithProgress.length);
+                    } else {
+                      // No progress data available; display 0 as a safe default
+                      avgProd = 0;
+                    }
+                  }
+                }
+
+                // sanitize and clamp between 0-100
+                avgProd = Math.max(0, Math.min(100, Math.round(Number(avgProd) || 0)));
+
+                let fillClass = 'bg-orange-400';
+                if (avgProd >= 95) fillClass = 'bg-green-500';
+                else if (avgProd >= 90) fillClass = 'bg-teal-500';
+                else if (avgProd >= 85) fillClass = 'bg-yellow-400';
+
+                const linkTarget = `/employee/team_analysis?team=${encodeURIComponent(teamName)}`;
+
+                return (
+                  <Link
+                    key={t.id || teamName}
+                    href={linkTarget}
+                    className="block"
+                    aria-label={`View ${teamName} details`}
+                  >
+                    <div className="bg-white p-6 rounded-md shadow-sm hover:shadow-lg transition-shadow cursor-pointer">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="text-sm font-medium text-gray-800">{teamName}</div>
+                          <div className="text-xs text-gray-500">{membersCount} members • {projectsOfTeam} projects</div>
+                        </div>
+                        <div className="text-sm font-semibold text-gray-700 ml-2">{avgProd}%</div>
                       </div>
-                      <div className="text-sm font-semibold text-gray-700 ml-2">{avgProd}%</div>
-                    </div>
 
-                    <div className="mt-3">
-                      <div className="w-full bg-gray-100 h-3 rounded overflow-hidden">
-                        <div className={`${fillClass} h-3`} style={{ width: `${avgProd}%` }} />
+                      <div className="mt-3">
+                        <div className="w-full bg-gray-100 h-3 rounded overflow-hidden">
+                          <div className={`${fillClass} h-3`} style={{ width: `${avgProd}%` }} />
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between">
+                        <span className="text-xs text-gray-500">Productivity</span>
                       </div>
                     </div>
-
-                    <div className="mt-3 flex items-center justify-between">
-                      <span className="text-xs text-gray-500">Productivity</span>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
+                  </Link>
+                );
+              });
+            })()}
           </div>
         </div>
       </div>

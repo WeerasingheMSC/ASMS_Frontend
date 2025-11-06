@@ -147,9 +147,9 @@ const page = () => {
             </div>
 
             <div className="text-sm sm:text-base">
-              <a href="#" className="font-medium !text-blue-600 hover:!text-blue-400 underline">
+              <Link href="/forgot-password" className="font-medium !text-blue-600 hover:!text-blue-400 underline">
                 Forgot password?
-              </a>
+              </Link>
             </div>
           </div>
 

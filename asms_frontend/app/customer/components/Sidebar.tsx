@@ -2,7 +2,7 @@
 import React from 'react'
 import { useRouter } from 'next/navigation'
 import { GrDashboard } from "react-icons/gr";
-import { FaRegQuestionCircle } from "react-icons/fa";
+import { FaRegQuestionCircle, FaUserCircle } from "react-icons/fa";
 import { AiOutlineFileText } from "react-icons/ai";
 import { MdOutlineRateReview, MdOutlineLogout } from "react-icons/md";
 import { BiMessageSquareAdd } from "react-icons/bi";
@@ -24,7 +24,7 @@ const Sidebar = ({ activeItem = '' }: SidebarProps) => {
         <ul className='mt-10 text-white font-semibold text-lg space-y-8 ml-10'>
           <li 
             onClick={() => router.push('/customer')}
-            className={`cursor-pointer flex text-lg p-2 rounded ${activeItem === 'Dashboard' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
+            className={`cursor-pointer flex text-lg p-2 rounded-l-2xl ${activeItem === 'Dashboard' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
           >
             <GrDashboard className='mr-2 text-2xl' />Dashboard
           </li>
@@ -52,13 +52,6 @@ const Sidebar = ({ activeItem = '' }: SidebarProps) => {
           >
             <MdOutlineRateReview className='mr-2 text-2xl' />Review
           </li>
-          <li 
-            onClick={() => router.push('/customer/Log out')}
-            className={`cursor-pointer flex text-lg p-2 rounded ${activeItem === 'Log out' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
-          >
-            <MdOutlineLogout className='mr-2 text-2xl' />Log out
-          </li>
-          
         </ul>
       </div>
     </div>

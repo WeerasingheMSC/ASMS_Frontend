@@ -148,3 +148,63 @@
 @media (max-width: 900px) {
   .search { width: 320px; }
 }
+/* Add these styles to your existing projects.module.css */
+
+.clearBtn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #e5e7eb;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #6b7280;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.clearBtn:hover {
+  background: #d1d5db;
+  color: #374151;
+}
+
+.search {
+  position: relative;
+}
+
+.pageBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Status filter colors with counts */
+.filterAll {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.filterPending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.filterInProgress {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.filterCompleted {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.filterOverdue {
+  background: #fee2e2;
+  color: #991b1b;
+}

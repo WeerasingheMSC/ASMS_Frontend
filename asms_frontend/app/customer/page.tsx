@@ -1,57 +1,19 @@
 'use client'
 import React, { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Sidebar from './components/Sidebar'
 import Navbar from './components/Navbar'
 import { getCustomerAppointments, AppointmentResponse } from '../lib/appointmentsApi'
 
-export default function CustomerDashboard() {
-  const [appointments, setAppointments] = useState<AppointmentResponse[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [showServiceModal, setShowServiceModal] = useState(false)
-  const [selectedService, setSelectedService] = useState<{
-    title: string;
-    description: string;
-    benefits: string[];
-  } | null>(null)
-  
-  // State for service image carousels
-  const [serviceImages] = useState({
-    repair: [
-      '/services/repair1.jpg',
-      '/services/repair2.jpg',
-      '/services/repair3.jpg'
-    ],
-    washing: [
-      '/services/washing1.jpg',
-      '/services/washing2.jpg',
-      '/services/washing3.jpg'
-    ],
-    checkup: [
-      '/services/checkup1.jpg',
-      '/services/checkup2.jpg',
-      '/services/checkup3.jpg'
-    ]
-  })
-  
-  const [currentImageIndex, setCurrentImageIndex] = useState({
-    repair: 0,
-    washing: 0,
-    checkup: 0
-  })
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
-  // Auto-rotate service images every 3 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentImageIndex(prev => ({
-        repair: (prev.repair + 1) % serviceImages.repair.length,
-        washing: (prev.washing + 1) % serviceImages.washing.length,
-        checkup: (prev.checkup + 1) % serviceImages.checkup.length
-      }))
-    }, 3000)
-    
-    return () => clearInterval(interval)
-  }, [serviceImages])
+export default function CustomerDashboard() {
+  const router = useRouter()
+  const [appointments, setAppointments] = useState<AppointmentResponse[]>([])
+  const [services, setServices] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadingServices, setLoadingServices] = useState(true)
+  const [error, setError] = useState('')
 
   // Helper function for greeting message
   const getGreetingMessage = () => {
@@ -61,59 +23,9 @@ export default function CustomerDashboard() {
     return "Good Evening! We're here to help with your automotive needs."
   }
 
-  // Handle learn more button
-  const handleLearnMore = (service: string) => {
-    const serviceDetails = {
-      repair: {
-        title: 'Vehicle Repair Services',
-        description: 'Our expert mechanics provide comprehensive repair services for all vehicle types. From engine repairs to transmission work, we handle it all with precision and care.',
-        benefits: [
-          'Certified and experienced mechanics',
-          'State-of-the-art diagnostic equipment',
-          'Quality parts and materials',
-          'Comprehensive warranty on all repairs',
-          '24/7 emergency repair services',
-          'Free vehicle inspection with every repair'
-        ]
-      },
-      washing: {
-        title: 'Vehicle Washing & Detailing',
-        description: 'Keep your vehicle looking brand new with our premium washing and detailing services. We use eco-friendly products and advanced techniques to ensure the best results.',
-        benefits: [
-          'Exterior hand wash and polish',
-          'Interior deep cleaning and vacuuming',
-          'Engine bay cleaning',
-          'Wax and paint protection',
-          'Odor removal and sanitization',
-          'Eco-friendly cleaning products'
-        ]
-      },
-      checkup: {
-        title: 'Vehicle Condition Checkup',
-        description: 'Regular maintenance and checkups are essential for your vehicle\'s longevity. Our comprehensive inspection covers all critical systems to keep your vehicle running smoothly.',
-        benefits: [
-          'Complete multi-point inspection',
-          'Brake system evaluation',
-          'Fluid level checks and top-ups',
-          'Battery and electrical system testing',
-          'Tire pressure and condition assessment',
-          'Detailed inspection report with recommendations'
-        ]
-      }
-    }
-    
-    setSelectedService(serviceDetails[service as keyof typeof serviceDetails])
-    setShowServiceModal(true)
-  }
-
-  // Close modal
-  const closeModal = () => {
-    setShowServiceModal(false)
-    setSelectedService(null)
-  }
-
   useEffect(() => {
     fetchAppointments()
+    fetchServices()
   }, [])
 
   const fetchAppointments = async () => {
@@ -128,6 +40,45 @@ export default function CustomerDashboard() {
       setAppointments([]) // Fallback to empty array
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchServices = async () => {
+    try {
+      setLoadingServices(true)
+      const response = await fetch(`${API_URL}/api/customer/services`)
+      
+      if (response.ok) {
+        const data = await response.json()
+        // Filter only active services for customer view
+        const activeServices = data.filter((service: any) => service.isActive)
+        setServices(activeServices)
+      } else {
+        console.error('Failed to fetch services')
+      }
+    } catch (err) {
+      console.error('Error fetching services:', err)
+    } finally {
+      setLoadingServices(false)
+    }
+  }
+
+  const getCategoryColor = (category: string) => {
+    const colors: { [key: string]: string } = {
+      'Maintenance': 'bg-blue-100 text-blue-800',
+      'Repair': 'bg-orange-100 text-orange-800',
+      'Inspection': 'bg-teal-100 text-teal-800',
+      'Detailing': 'bg-purple-100 text-purple-800',
+    };
+    return colors[category] || 'bg-gray-100 text-gray-800';
+  }
+
+  const getPriorityBadgeColor = (priority: string) => {
+    switch (priority) {
+      case 'HIGH': return 'bg-red-100 text-red-800';
+      case 'MEDIUM': return 'bg-yellow-100 text-yellow-800';
+      case 'LOW': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   }
 
@@ -182,7 +133,7 @@ export default function CustomerDashboard() {
       
       <div className='flex-1 ml-[16.666667%] bg-gray-50 min-h-screen'>
         <Navbar />
-        <div className='p-8'>
+        <div className='p-8 pt-24'>
           <div className='mb-8 animate-fade-in-down'>
           <div className='relative overflow-hidden bg-gradient-to-br from-blue-900 via-blue-900 to-blue-900 p-10 rounded-3xl shadow-2xl'>
             <div className='absolute inset-0 opacity-10'>
@@ -229,142 +180,97 @@ export default function CustomerDashboard() {
         </div>
 
        
-        <div className='mb-8'>
+        {/* Our Services Section */}
+        <div className='mb-8 mt-8'>
           <h2 className='text-3xl font-bold text-gray-800 mb-6'>Our Services</h2>
           
-          <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
-            {/* Service 1: Vehicle Repair */}
-            <div className='group bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2'>
-              {/* Image Container - Dynamic background color on hover */}
-              <div className='relative h-48 bg-gradient-to-br from-blue-100 to-blue-50 group-hover:from-blue-200 group-hover:to-blue-100 transition-all duration-300 flex items-center justify-center overflow-hidden'>
-                {/* Photos carousel - auto-rotate every 3 seconds */}
-                {serviceImages.repair.map((imageSrc, index) => (
-                  <img 
-                    key={index}
-                    src={imageSrc} 
-                    alt={`Vehicle Repair ${index + 1}`} 
-                    className={`absolute w-full h-full object-cover group-hover:scale-110 transition-all duration-1000 ${
-                      index === currentImageIndex.repair ? 'opacity-100' : 'opacity-0'
-                    }`}
-                  />
-                ))}
-                {/* Image indicators */}
-                <div className='absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10'>
-                  {serviceImages.repair.map((_, index) => (
-                    <div 
-                      key={index}
-                      className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                        index === currentImageIndex.repair ? 'bg-white w-6' : 'bg-white/50'
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
-              {/* Card Content */}
-              <div className='p-6'>
-                <h3 className='text-xl font-bold text-gray-800 mb-2'>Vehicle Repair</h3>
-                <p className='text-gray-600 mb-4'>Professional repair services for all vehicle types. Expert mechanics ready to fix any issue.</p>
-                <button 
-                  onClick={() => handleLearnMore('repair')}
-                  className='w-full bg-blue-800 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors duration-300'
+          {loadingServices ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500">Loading services...</p>
+            </div>
+          ) : services.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-lg shadow">
+              <p className="text-gray-500">No services available at the moment</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {services.map((service) => (
+                <div
+                  key={service.id}
+                  onClick={() => router.push(`/customer/services/${service.id}`)}
+                  className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden cursor-pointer transform hover:-translate-y-1"
                 >
-                  Learn More
-                </button>
-              </div>
-            </div>
+                  {/* Service Image */}
+                  <div className="h-48 bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center relative">
+                    {service.serviceImage ? (
+                      <img src={service.serviceImage} alt={service.serviceName} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="text-white text-6xl">🔧</div>
+                    )}
+                  </div>
 
-            {/* Service 2: Vehicle Washing */}
-            <div className='group bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2'>
-              {/* Image Container - Dynamic background color on hover */}
-              <div className='relative h-48 bg-gradient-to-br from-green-100 to-green-50 group-hover:from-green-200 group-hover:to-green-100 transition-all duration-300 flex items-center justify-center overflow-hidden'>
-                {/* Photos carousel - auto-rotate every 3 seconds */}
-                {serviceImages.washing.map((imageSrc, index) => (
-                  <img 
-                    key={index}
-                    src={imageSrc} 
-                    alt={`Vehicle Washing ${index + 1}`} 
-                    className={`absolute w-full h-full object-cover group-hover:scale-110 transition-all duration-1000 ${
-                      index === currentImageIndex.washing ? 'opacity-100' : 'opacity-0'
-                    }`}
-                  />
-                ))}
-                {/* Image indicators */}
-                <div className='absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10'>
-                  {serviceImages.washing.map((_, index) => (
-                    <div 
-                      key={index}
-                      className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                        index === currentImageIndex.washing ? 'bg-white w-6' : 'bg-white/50'
-                      }`}
-                    />
-                  ))}
+                  {/* Service Content */}
+                  <div className="p-6">
+                    {/* Title */}
+                    <div className="mb-3">
+                      <h3 className="text-xl font-bold text-gray-900">{service.serviceName}</h3>
+                    </div>
+
+                    {/* Category and Priority */}
+                    <div className="flex gap-2 mb-4 flex-wrap">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getCategoryColor(service.category)}`}>
+                        {service.category}
+                      </span>
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getPriorityBadgeColor(service.priority)}`}>
+                        {service.priority}
+                      </span>
+                      {service.remainingSlots !== undefined && service.remainingSlots > 0 && (
+                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                          {service.remainingSlots} slots left today
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Description */}
+                    {service.description && (
+                      <p className="text-gray-600 text-sm mb-4 line-clamp-2">{service.description}</p>
+                    )}
+
+                    {/* Service Details */}
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Duration:</span>
+                        <span className="font-semibold text-gray-900">{service.estimatedDuration} hours</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Price:</span>
+                        <span className="font-bold text-blue-600">LKR {service.basePrice.toLocaleString()}</span>
+                      </div>
+                      {service.requiredSkills && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Skills:</span>
+                          <span className="font-semibold text-gray-900 text-right text-xs">{service.requiredSkills}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* View Details Button */}
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/customer/services/${service.id}`);
+                        }}
+                        className="w-full px-4 py-2 bg-blue-800 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors text-sm"
+                      >
+                        View Details
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              {/* Card Content */}
-              <div className='p-6'>
-                <h3 className='text-xl font-bold text-gray-800 mb-2'>Vehicle Washing</h3>
-                <p className='text-gray-600 mb-4'>Premium washing and detailing services. Keep your vehicle spotless and shining.</p>
-                <button 
-                  onClick={() => handleLearnMore('washing')}
-                  className='w-full bg-blue-800 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors duration-300'
-                >
-                  Learn More
-                </button>
-              </div>
+              ))}
             </div>
-
-            {/* Service 3: Condition Checkup */}
-            <div className='group bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2'>
-              {/* Image Container - Dynamic background color on hover */}
-              <div className='relative h-48 bg-gradient-to-br from-purple-100 to-purple-50 group-hover:from-purple-200 group-hover:to-purple-100 transition-all duration-300 flex items-center justify-center overflow-hidden'>
-                {/* Photos carousel - auto-rotate every 3 seconds */}
-                {serviceImages.checkup.map((imageSrc, index) => (
-                  <img 
-                    key={index}
-                    src={imageSrc} 
-                    alt={`Condition Checkup ${index + 1}`} 
-                    className={`absolute w-full h-full object-cover group-hover:scale-110 transition-all duration-1000 ${
-                      index === currentImageIndex.checkup ? 'opacity-100' : 'opacity-0'
-                    }`}
-                  />
-                ))}
-                {/* Image indicators */}
-                <div className='absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10'>
-                  {serviceImages.checkup.map((_, index) => (
-                    <div 
-                      key={index}
-                      className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                        index === currentImageIndex.checkup ? 'bg-white w-6' : 'bg-white/50'
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-            <p className='text-gray-600'>View your past service records</p>
-            <div className='mt-4'>
-              {loading ? (
-                <span className='text-gray-500'>Loading...</span>
-              ) : (
-                <>
-                  <span className='text-2xl font-bold text-orange-600'>{completedAppointments}</span>
-                  <span className='text-gray-500 ml-2'>Completed</span>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Card 5 - Reports */}
-          <div className='bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow'>
-            <div className='flex items-center justify-between mb-4'>
-              <h3 className='text-xl font-semibold text-gray-800'>Reports</h3>
-              <div className='bg-red-100 p-3 rounded-full'>
-                <svg className='w-6 h-6 text-red-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' />
-                </svg>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Recent Activity Section */}
@@ -441,48 +347,6 @@ export default function CustomerDashboard() {
         )}
 
       </div>
-
-      {/* Service Details Modal Popup */}
-      {showServiceModal && selectedService && (
-        <div className='fixed inset-0 bg-none bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4' onClick={closeModal}>
-          <div className='bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto' onClick={(e) => e.stopPropagation()}>
-            <div className='sticky top-0 bg-gradient-to-r from-blue-900 to-blue-800 text-white p-6 rounded-t-2xl flex justify-between items-center'>
-              <h2 className='text-3xl font-bold'>{selectedService.title}</h2>
-              <button 
-                onClick={closeModal}
-                className='text-white hover:text-gray-200 text-3xl font-bold w-10 h-10 flex items-center justify-center rounded-full hover:bg-white hover:bg-opacity-20 transition-all duration-300'
-              >
-                ×
-              </button>
-            </div>
-            
-            <div className='p-8'>
-              <div className='mb-6'>
-                <h3 className='text-xl font-semibold text-gray-800 mb-3'>Why Choose VX Service?</h3>
-                <p className='text-gray-700 leading-relaxed text-lg'>
-                  {selectedService.description}
-                </p>
-              </div>
-
-              <div className='mb-6'>
-                <h3 className='text-xl font-semibold text-gray-800 mb-4'>Key Benefits & Features</h3>
-                <div className='space-y-3'>
-                  {selectedService.benefits.map((benefit, index) => (
-                    <div key={index} className='flex items-start gap-3 bg-blue-50 p-4 rounded-lg hover:bg-blue-100 transition-colors duration-300'>
-                      <svg className='w-6 h-6 text-blue-800 flex-shrink-0 mt-0.5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                        <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2.5} d='M5 13l4 4L19 7' />
-                      </svg>
-                      <p className='text-gray-700 leading-relaxed'>{benefit}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              
-            </div>
-          </div>
-        </div>
-      )}
       </div>
     </div>
   )

@@ -123,7 +123,7 @@ export default function FAQPage() {
       <Sidebar activeItem='FAQ' />
       <div className='flex-1 ml-[16.666667%] bg-gray-50'>
         <Navbar />
-        <Container maxWidth="lg" className="py-6">
+        <Container maxWidth="lg" className="py-6 pt-24">
           <Box className="mb-8">
             <Box className="flex justify-between items-start mb-6">
               <Box>

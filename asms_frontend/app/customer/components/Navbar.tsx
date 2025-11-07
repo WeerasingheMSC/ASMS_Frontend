@@ -58,7 +58,7 @@ const Navbar = () => {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <div className='h-16 bg-white  flex items-center justify-between px-6 border-b border-gray-200'>
+    <div className='fixed top-0 right-0 left-[16.666667%] h-16 bg-white flex items-center justify-between px-6 border-b border-gray-200 z-40'>
       <div className='flex items-center'>
         <h2 className='text-xl font-semibold text-gray-800'>Customer Dashboard</h2>
       </div>

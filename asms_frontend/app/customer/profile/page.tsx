@@ -210,7 +210,7 @@ const CustomerProfilePage = () => {
         <Sidebar activeItem='Profile' />
         <div className='flex-1 ml-[16.666%] flex flex-col'>
           <Navbar />
-          <div className='flex-1 flex items-center justify-center'>
+          <div className='flex-1 flex items-center justify-center pt-16'>
             <div className='text-xl text-gray-600'>Loading...</div>
           </div>
         </div>
@@ -223,7 +223,7 @@ const CustomerProfilePage = () => {
       <Sidebar activeItem='Profile' />
       <div className='flex-1 ml-[16.666%] flex flex-col'>
         <Navbar />
-        <div className='flex-1 overflow-y-auto p-8'>
+        <div className='flex-1 overflow-y-auto p-8 pt-24'>
           {/* Page Header */}
           <div className='mb-8'>
             <h1 className='text-3xl font-bold text-gray-800'>Profile Settings</h1>

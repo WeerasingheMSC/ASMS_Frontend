@@ -42,14 +42,14 @@ interface Employee {
 
 function WorkloadOverview({ stats }: { stats: AppointmentStats }) {
   const total = stats.total || 0;
-  const confirmed = stats.confirmed || 0;
+  const cancelled = stats.cancelled || 0;
   const inService = stats.inService || 0;
   const completed = stats.completed || 0;
 
   const circumference = 2 * Math.PI * 60;
   const completedLen = circumference * (total ? completed / total : 0);
   const inServiceLen = circumference * (total ? inService / total : 0);
-  const confirmedLen = circumference * (total ? confirmed / total : 0);
+  const cancelledLen = circumference * (total ? cancelled / total : 0);
 
   return (
     <div className={styles.workloadContainer}>
@@ -59,7 +59,7 @@ function WorkloadOverview({ stats }: { stats: AppointmentStats }) {
             <circle cx="80" cy="80" r="60" fill="none" stroke="#eef2f7" strokeWidth="14" />
             <circle cx="80" cy="80" r="60" fill="none" stroke="#16a34a" strokeWidth="14" strokeDasharray={`${completedLen} ${circumference - completedLen}`} strokeLinecap="round" />
             <circle cx="80" cy="80" r="60" fill="none" stroke="#2563eb" strokeWidth="14" strokeDasharray={`${inServiceLen} ${circumference - inServiceLen}`} strokeDashoffset={-completedLen} strokeLinecap="round" />
-            <circle cx="80" cy="80" r="60" fill="none" stroke="#f59e0b" strokeWidth="14" strokeDasharray={`${confirmedLen} ${circumference - confirmedLen}`} strokeDashoffset={-(completedLen + inServiceLen)} strokeLinecap="round" />
+            <circle cx="80" cy="80" r="60" fill="none" stroke="#ef4444" strokeWidth="14" strokeDasharray={`${cancelledLen} ${circumference - cancelledLen}`} strokeDashoffset={-(completedLen + inServiceLen)} strokeLinecap="round" />
           </g>
         </svg>
 
@@ -80,7 +80,7 @@ function WorkloadOverview({ stats }: { stats: AppointmentStats }) {
         </div>
         <div className={styles.legendItem}>
           <span className={`${styles.legendDot} ${styles.legendDotOnHold}`} />
-          <div className={styles.legendText}>Confirmed <span className={styles.legendCount}>({confirmed})</span></div>
+          <div className={styles.legendText}>Cancelled <span className={styles.legendCount}>({cancelled})</span></div>
         </div>
       </div>
     </div>
@@ -353,8 +353,8 @@ export default function EmployeeDashboardPage() {
               <div className="text-sm  text-blue-900/80 font-medium">Completed</div>
             </div>
             <div className="text-gray-500">
-              <div className="text-2xl font-bold">{appointmentStats.confirmed}</div>
-              <div className="text-sm  text-blue-900/80 font-medium">Confirmed</div>
+              <div className="text-2xl font-bold">{appointmentStats.cancelled}</div>
+              <div className="text-sm  text-blue-900/80 font-medium">Cancelled</div>
             </div>
           </div>
         </div>
@@ -471,7 +471,7 @@ export default function EmployeeDashboardPage() {
 
       {/* ✅ Dashboard Stats - From Backend */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className='bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl shadow-sm hover:shadow-md transition-all border border-blue-200'>
+        <div className='bg-transparent p-6 rounded-xl shadow-sm hover:shadow-md transition-all border border-blue-200'>
           <div className='flex items-center justify-between mb-4'>
             <h3 className='text-lg font-semibold text-blue-900'>In Service</h3>
             <div className='bg-blue-500 p-3 rounded-full shadow-sm'>
@@ -487,7 +487,7 @@ export default function EmployeeDashboardPage() {
           </div>
         </div>
 
-        <div className='bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl shadow-sm hover:shadow-md transition-all border border-green-200'>
+        <div className='bg-transparent p-6 rounded-xl shadow-sm hover:shadow-md transition-all border border-green-200'>
           <div className='flex items-center justify-between mb-4'>
             <h3 className='text-lg font-semibold text-green-900'>Completed</h3>
             <div className='bg-green-500 p-3 rounded-full shadow-sm'>
@@ -503,19 +503,19 @@ export default function EmployeeDashboardPage() {
           </div>
         </div>
 
-        <div className='bg-gradient-to-br from-yellow-50 to-yellow-100 p-6 rounded-xl shadow-sm hover:shadow-md transition-all border border-yellow-200'>
+        <div className='bg-transparent p-6 rounded-xl shadow-sm hover:shadow-md transition-all border border-red-200'>
           <div className='flex items-center justify-between mb-4'>
-            <h3 className='text-lg font-semibold text-yellow-900'>Confirmed</h3>
-            <div className='bg-yellow-500 p-3 rounded-full shadow-sm'>
+            <h3 className='text-lg font-semibold text-red-900'>Cancelled</h3>
+            <div className='bg-red-500 p-3 rounded-full shadow-sm'>
               <svg className='w-6 h-6 text-white' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' />
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z' />
               </svg>
             </div>
           </div>
-          <p className='text-yellow-700 mb-2 font-medium'>Scheduled</p>
+          <p className='text-red-700 mb-2 font-medium'>Cancelled</p>
           <div>
-            <span className='text-3xl font-bold text-yellow-900'>{appointmentStats.confirmed}</span>
-            <span className='text-yellow-600 ml-2 text-sm'>appointments</span>
+            <span className='text-3xl font-bold text-red-900'>{appointmentStats.cancelled}</span>
+            <span className='text-red-600 ml-2 text-sm'>appointments</span>
           </div>
         </div>
       </div>

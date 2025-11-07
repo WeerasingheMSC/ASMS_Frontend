@@ -70,7 +70,7 @@ export default function MyAppointments() {
   })
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
       <Sidebar activeItem="My Appointments" />
       
       <div className="flex-1 ml-[16.666667%] overflow-auto">
@@ -184,7 +184,7 @@ export default function MyAppointments() {
                 onClick={() => setFilterStatus(null)}
                 className={`px-5 py-2.5 rounded-lg font-medium transition-all duration-300 ${
                   filterStatus === null
-                    ? "bg-blue-800 text-white shadow-md transform scale-105"
+                    ? "bg-blue-800 text-white shadow-md transform scale-105 hover:bg-blue-900"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
@@ -195,7 +195,7 @@ export default function MyAppointments() {
                 onClick={() => setFilterStatus("PENDING")}
                 className={`px-5 py-2.5 rounded-lg font-medium transition-all duration-300 ${
                   filterStatus === "PENDING"
-                    ? "bg-yellow-500 text-white shadow-md transform scale-105"
+                    ? "bg-yellow-500 text-white shadow-md transform scale-105 hover:bg-yellow-600"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
@@ -206,7 +206,7 @@ export default function MyAppointments() {
                 onClick={() => setFilterStatus("CONFIRMED")}
                 className={`px-5 py-2.5 rounded-lg font-medium transition-all duration-300 ${
                   filterStatus === "CONFIRMED"
-                    ? "bg-blue-500 text-white shadow-md transform scale-105"
+                    ? "bg-blue-500 text-white shadow-md transform scale-105 hover:bg-blue-600"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
@@ -217,7 +217,7 @@ export default function MyAppointments() {
                 onClick={() => setFilterStatus("IN_SERVICE")}
                 className={`px-5 py-2.5 rounded-lg font-medium transition-all duration-300 ${
                   filterStatus === "IN_SERVICE"
-                    ? "bg-purple-500 text-white shadow-md transform scale-105"
+                    ? "bg-purple-500 text-white shadow-md transform scale-105 hover:bg-purple-600"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
@@ -228,7 +228,7 @@ export default function MyAppointments() {
                 onClick={() => setFilterStatus("READY")}
                 className={`px-5 py-2.5 rounded-lg font-medium transition-all duration-300 ${
                   filterStatus === "READY"
-                    ? "bg-cyan-500 text-white shadow-md transform scale-105"
+                    ? "bg-cyan-500 text-white shadow-md transform scale-105 hover:bg-cyan-600"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
@@ -239,7 +239,7 @@ export default function MyAppointments() {
                 onClick={() => setFilterStatus("COMPLETED")}
                 className={`px-5 py-2.5 rounded-lg font-medium transition-all duration-300 ${
                   filterStatus === "COMPLETED"
-                    ? "bg-green-500 text-white shadow-md transform scale-105"
+                    ? "bg-green-500 text-white shadow-md transform scale-105 hover:bg-green-600"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
@@ -250,7 +250,7 @@ export default function MyAppointments() {
                 onClick={() => setFilterStatus("CANCELLED")}
                 className={`px-5 py-2.5 rounded-lg font-medium transition-all duration-300 ${
                   filterStatus === "CANCELLED"
-                    ? "bg-red-500 text-white shadow-md transform scale-105"
+                    ? "bg-red-500 text-white shadow-md transform scale-105 hover:bg-red-600"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >

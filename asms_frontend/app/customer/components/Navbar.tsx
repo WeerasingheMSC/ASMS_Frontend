@@ -12,8 +12,8 @@ import {
   formatNotificationTime,
   getNotificationStyle 
 } from '@/app/lib/notificationsApi'
-import { notificationPollingService } from '@/app/lib/notificationPolling'
-import type { Notification } from '@/app/lib/types/notification.types'
+import { notificationWebSocketService } from '@/app/lib/notificationWebSocket'
+import type { Notification, WebSocketNotificationMessage } from '@/app/lib/types/notification.types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -51,10 +51,48 @@ const Navbar = () => {
     }
   };
 
-  // Handle polling updates
-  const handlePollingUpdate = (notifications: Notification[], count: number) => {
-    setNotifications(notifications);
-    setUnreadCount(count);
+  // Handle incoming WebSocket notification
+  const handleWebSocketNotification = (message: WebSocketNotificationMessage) => {
+    console.log('🔔 New notification received via WebSocket:', message);
+    
+    // Create a new notification object
+    const newNotification: Notification = {
+      id: message.notificationId || Date.now(), // Use timestamp as fallback
+      title: message.title,
+      message: message.message,
+      type: message.type,
+      recipientId: message.recipientId || 0,
+      appointmentId: message.appointmentId,
+      isRead: false,
+      createdAt: message.timestamp || new Date().toISOString(),
+      readAt: null
+    };
+
+    // Add to notifications list at the beginning
+    setNotifications(prev => [newNotification, ...prev]);
+    
+    // Increment unread count
+    setUnreadCount(prev => prev + 1);
+
+    // Show browser notification if permission granted
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(message.title, {
+        body: message.message,
+        icon: '/favicon.ico',
+        badge: '/favicon.ico'
+      });
+    }
+
+    // Play notification sound (optional)
+    try {
+      const audio = new Audio('/notification-sound.mp3');
+      audio.volume = 0.3;
+      audio.play().catch(() => {
+        // Ignore if audio fails to play
+      });
+    } catch (e) {
+      // Ignore audio errors
+    }
   };
 
   useEffect(() => {
@@ -67,9 +105,15 @@ const Navbar = () => {
       fetchNotifications();
       fetchUnreadCount();
 
-      // Start polling for notifications (every 30 seconds)
-      notificationPollingService.startPolling(handlePollingUpdate, 30000);
-      console.log('🔄 Started notification polling (every 30 seconds)');
+      // Connect to WebSocket for real-time notifications
+      if (parsedUser.userId && parsedUser.role) {
+        notificationWebSocketService.connect(
+          parsedUser.userId,
+          parsedUser.role,
+          handleWebSocketNotification
+        );
+        console.log('� Connected to WebSocket for real-time notifications');
+      }
 
       // Request browser notification permission
       if ('Notification' in window && Notification.permission === 'default') {
@@ -77,9 +121,10 @@ const Navbar = () => {
       }
     }
 
-    // Cleanup polling on unmount
+    // Cleanup WebSocket on unmount
     return () => {
-      notificationPollingService.stopPolling();
+      notificationWebSocketService.disconnect();
+      console.log('🔌 Disconnected from WebSocket');
     };
   }, []);
 
@@ -99,7 +144,7 @@ const Navbar = () => {
   }, []);
 
   const handleLogout = () => {
-    notificationPollingService.stopPolling();
+    notificationWebSocketService.disconnect();
     localStorage.removeItem('user');
     router.push('/signin');
   };

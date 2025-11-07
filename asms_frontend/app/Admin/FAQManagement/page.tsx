@@ -3,14 +3,16 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
-import { Plus, Edit2, Trash2, Search, ChevronDown, ChevronUp, Eye, CheckCircle, X, MessageSquare, ArrowLeft } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, ChevronDown, ChevronUp, Eye, CheckCircle, X, MessageSquare, ArrowLeft, ToggleLeft, ToggleRight } from 'lucide-react';
 
 interface FAQ {
   id: number;
   question: string;
   answer: string;
   category: string;
+  isActive: boolean;
   createdAt: string;
+  updatedAt: string;
 }
 
 interface CustomerQuestion {
@@ -19,8 +21,12 @@ interface CustomerQuestion {
   email: string;
   category: string;
   question: string;
-  submittedAt: string;
-  status: string;
+  answer?: string;
+  attachmentUrl?: string;
+  isResolved: boolean;
+  answeredAt?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface FormErrors {
@@ -44,6 +50,9 @@ function AdminFAQManagement() {
   const [selectedQuestion, setSelectedQuestion] = useState<CustomerQuestion | null>(null);
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
+  const [answerModalOpen, setAnswerModalOpen] = useState(false);
+  const [answerText, setAnswerText] = useState('');
+  const [answerError, setAnswerError] = useState('');
   
   const [formData, setFormData] = useState({
     question: '',
@@ -54,6 +63,8 @@ function AdminFAQManagement() {
 
   const categories = ['All', 'Appointments', 'Payments', 'Services', 'Other'];
 
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
   useEffect(() => {
     loadFAQs();
     loadCustomerQuestions();
@@ -61,39 +72,43 @@ function AdminFAQManagement() {
 
   const loadFAQs = async () => {
     try {
-      const result = localStorage.getItem('admin-faqs');
-      if (result) {
-        setFaqs(JSON.parse(result));
+      const userData = localStorage.getItem('user');
+      if (!userData) return;
+
+      const user = JSON.parse(userData);
+      const response = await fetch(`${API_URL}/api/admin/faqs`, {
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setFaqs(data);
       }
     } catch (error) {
-      console.log('No existing FAQs');
+      console.error('Error fetching FAQs:', error);
     }
   };
 
   const loadCustomerQuestions = async () => {
     try {
-      const result = localStorage.getItem('customer-questions');
-      if (result) {
-        setCustomerQuestions(JSON.parse(result));
+      const userData = localStorage.getItem('user');
+      if (!userData) return;
+
+      const user = JSON.parse(userData);
+      const response = await fetch(`${API_URL}/api/admin/customer-questions`, {
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCustomerQuestions(data);
       }
     } catch (error) {
-      console.log('No existing questions');
-    }
-  };
-
-  const saveFAQs = async (updatedFAQs: FAQ[]) => {
-    try {
-      localStorage.setItem('admin-faqs', JSON.stringify(updatedFAQs));
-    } catch (error) {
-      console.error('Error saving FAQs:', error);
-    }
-  };
-
-  const saveCustomerQuestions = async (updatedQuestions: CustomerQuestion[]) => {
-    try {
-      localStorage.setItem('customer-questions', JSON.stringify(updatedQuestions));
-    } catch (error) {
-      console.error('Error saving questions:', error);
+      console.error('Error fetching customer questions:', error);
     }
   };
 
@@ -281,45 +296,95 @@ function AdminFAQManagement() {
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
-    let updatedFAQs;
-    
-    if (isEditMode && selectedFAQ) {
-      updatedFAQs = faqs.map(faq =>
-        faq.id === selectedFAQ.id
-          ? { ...faq, ...formData }
-          : faq
-      );
-      setSuccessMessage('FAQ updated successfully!');
-    } else {
-      const newFAQ = {
-        id: Date.now(),
-        ...formData,
-        createdAt: new Date().toISOString().split('T')[0],
-      };
-      updatedFAQs = [...faqs, newFAQ];
-      setSuccessMessage('FAQ created successfully!');
+    try {
+      const userData = localStorage.getItem('user');
+      if (!userData) return;
+
+      const user = JSON.parse(userData);
+      const url = isEditMode && selectedFAQ
+        ? `${API_URL}/api/admin/faqs/${selectedFAQ.id}`
+        : `${API_URL}/api/admin/faqs`;
+      
+      const response = await fetch(url, {
+        method: isEditMode ? 'PUT' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if (response.ok) {
+        const savedFAQ = await response.json();
+        
+        if (isEditMode && selectedFAQ) {
+          setFaqs(faqs.map(faq => faq.id === savedFAQ.id ? savedFAQ : faq));
+          setSuccessMessage('FAQ updated successfully!');
+        } else {
+          setFaqs([savedFAQ, ...faqs]);
+          setSuccessMessage('FAQ created successfully!');
+        }
+        
+        setShowSuccess(true);
+        setIsModalOpen(false);
+        
+        setTimeout(() => {
+          setShowSuccess(false);
+        }, 3000);
+      }
+    } catch (error) {
+      console.error('Error saving FAQ:', error);
     }
-    
-    setFaqs(updatedFAQs);
-    await saveFAQs(updatedFAQs);
-    
-    setShowSuccess(true);
-    setIsModalOpen(false);
-    
-    setTimeout(() => {
-      setShowSuccess(false);
-    }, 3000);
   };
 
   const handleDelete = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this FAQ?')) {
-      const updatedFAQs = faqs.filter(faq => faq.id !== id);
-      setFaqs(updatedFAQs);
-      await saveFAQs(updatedFAQs);
-      
-      setSuccessMessage('FAQ deleted successfully!');
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 3000);
+      try {
+        const userData = localStorage.getItem('user');
+        if (!userData) return;
+
+        const user = JSON.parse(userData);
+        const response = await fetch(`${API_URL}/api/admin/faqs/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${user.token}`
+          }
+        });
+
+        if (response.ok) {
+          setFaqs(faqs.filter(faq => faq.id !== id));
+          setSuccessMessage('FAQ deleted successfully!');
+          setShowSuccess(true);
+          setTimeout(() => setShowSuccess(false), 3000);
+        }
+      } catch (error) {
+        console.error('Error deleting FAQ:', error);
+      }
+    }
+  };
+
+  const handleToggleActive = async (faq: FAQ) => {
+    try {
+      const userData = localStorage.getItem('user');
+      if (!userData) return;
+
+      const user = JSON.parse(userData);
+      const response = await fetch(`${API_URL}/api/admin/faqs/${faq.id}/toggle-status`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      });
+
+      if (response.ok) {
+        const updatedFAQ = await response.json();
+        setFaqs(faqs.map(f => f.id === updatedFAQ.id ? updatedFAQ : f));
+        setSuccessMessage(`FAQ ${updatedFAQ.isActive ? 'activated' : 'deactivated'} successfully!`);
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
+      }
+    } catch (error) {
+      console.error('Error toggling FAQ status:', error);
     }
   };
 
@@ -329,16 +394,77 @@ function AdminFAQManagement() {
   };
 
   const handleMarkAsResolved = async (id: number) => {
-    const updatedQuestions = customerQuestions.map(q =>
-      q.id === id ? { ...q, status: 'resolved' } : q
-    );
-    setCustomerQuestions(updatedQuestions);
-    await saveCustomerQuestions(updatedQuestions);
-    setViewQuestionModal(false);
+    try {
+      const userData = localStorage.getItem('user');
+      if (!userData) return;
+
+      const user = JSON.parse(userData);
+      const response = await fetch(`${API_URL}/api/admin/customer-questions/${id}/resolve`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      });
+
+      if (response.ok) {
+        const updatedQuestion = await response.json();
+        setCustomerQuestions(customerQuestions.map(q => q.id === updatedQuestion.id ? updatedQuestion : q));
+        setViewQuestionModal(false);
+        
+        setSuccessMessage('Question marked as resolved!');
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
+      }
+    } catch (error) {
+      console.error('Error marking question as resolved:', error);
+    }
+  };
+
+  const handleOpenAnswerModal = (question: CustomerQuestion) => {
+    setSelectedQuestion(question);
+    setAnswerText(question.answer || '');
+    setAnswerError('');
+    setAnswerModalOpen(true);
+  };
+
+  const handleSubmitAnswer = async () => {
+    if (!answerText.trim()) {
+      setAnswerError('Answer is required');
+      return;
+    }
     
-    setSuccessMessage('Question marked as resolved!');
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 3000);
+    if (!selectedQuestion) return;
+    
+    try {
+      const userData = localStorage.getItem('user');
+      if (!userData) return;
+      
+      const user = JSON.parse(userData);
+      const response = await fetch(
+        `${API_URL}/api/admin/customer-questions/${selectedQuestion.id}/answer`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${user.token}`
+          },
+          body: JSON.stringify({ answer: answerText })
+        }
+      );
+      
+      if (response.ok) {
+        setSuccessMessage('Answer sent successfully! Question marked as resolved.');
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
+        loadCustomerQuestions();
+        setAnswerModalOpen(false);
+        setAnswerText('');
+        setAnswerError('');
+        setSelectedQuestion(null);
+      }
+    } catch (error) {
+      console.error('Error submitting answer:', error);
+    }
   };
 
   const filteredFAQs = faqs.filter(faq => {
@@ -457,14 +583,30 @@ function AdminFAQManagement() {
                                     <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
                                       {faq.category}
                                     </span>
+                                    <span className={`px-2 py-1 text-xs rounded-full ${
+                                      faq.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                    }`}>
+                                      {faq.isActive ? 'Active' : 'Inactive'}
+                                    </span>
                                     <span className="text-gray-500 text-sm">
-                                      Created: {faq.createdAt}
+                                      Created: {new Date(faq.createdAt).toLocaleDateString()}
                                     </span>
                                   </div>
                                 </div>
                               </button>
                             </div>
                             <div className="flex gap-2 ml-4">
+                              <button
+                                onClick={() => handleToggleActive(faq)}
+                                className={`p-2 rounded ${
+                                  faq.isActive 
+                                    ? 'text-yellow-600 hover:bg-yellow-50' 
+                                    : 'text-green-600 hover:bg-green-50'
+                                }`}
+                                title={faq.isActive ? 'Deactivate' : 'Activate'}
+                              >
+                                {faq.isActive ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                              </button>
                               <button
                                 onClick={() => handleOpenModal(faq)}
                                 className="p-2 text-blue-600 hover:bg-blue-50 rounded"
@@ -539,26 +681,38 @@ function AdminFAQManagement() {
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {question.submittedAt}
+                            {new Date(question.createdAt).toLocaleDateString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span
                               className={`px-2 py-1 text-xs rounded-full ${
-                                question.status === 'resolved'
+                                question.isResolved
                                   ? 'bg-green-100 text-green-700'
                                   : 'bg-yellow-100 text-yellow-700'
                               }`}
                             >
-                              {question.status}
+                              {question.isResolved ? 'resolved' : 'pending'}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center">
-                            <button
-                              onClick={() => handleViewQuestion(question)}
-                              className="px-4 py-2 text-sm border border-blue-600 text-blue-600 rounded hover:bg-blue-50"
-                            >
-                              View
-                            </button>
+                            <div className="flex justify-center gap-2">
+                              <button
+                                onClick={() => handleViewQuestion(question)}
+                                className="px-3 py-1 text-sm border border-blue-600 text-blue-600 rounded hover:bg-blue-50"
+                              >
+                                View
+                              </button>
+                              <button
+                                onClick={() => handleOpenAnswerModal(question)}
+                                className={`px-3 py-1 text-sm rounded ${
+                                  question.answer 
+                                    ? 'border border-green-600 text-green-600 hover:bg-green-50'
+                                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                                }`}
+                              >
+                                {question.answer ? 'Edit Answer' : 'Answer'}
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -710,16 +864,16 @@ function AdminFAQManagement() {
                     <p className="text-sm text-gray-600">Status</p>
                     <span
                       className={`inline-block px-2 py-1 text-xs rounded-full ${
-                        selectedQuestion.status === 'resolved'
+                        selectedQuestion.isResolved
                           ? 'bg-green-100 text-green-700'
                           : 'bg-yellow-100 text-yellow-700'
                       }`}
                     >
-                      {selectedQuestion.status}
+                      {selectedQuestion.isResolved ? 'resolved' : 'pending'}
                     </span>
                   </div>
 
-                  {selectedQuestion.status !== 'resolved' && (
+                  {!selectedQuestion.isResolved && (
                     <button
                       onClick={() => handleMarkAsResolved(selectedQuestion.id)}
                       className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 mt-4"
@@ -728,6 +882,98 @@ function AdminFAQManagement() {
                       Mark as Resolved
                     </button>
                   )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {answerModalOpen && selectedQuestion && (
+            <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backdropFilter: 'blur(3px)', backgroundColor: 'rgba(0, 0, 0, 0.3)' }}>
+              <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-gray-800">
+                    {selectedQuestion.answer ? 'Edit Answer' : 'Answer Question'}
+                  </h2>
+                  <button onClick={() => {
+                    setAnswerModalOpen(false);
+                    setAnswerText('');
+                    setAnswerError('');
+                  }} className="text-gray-500 hover:text-gray-700">
+                    <X size={24} />
+                  </button>
+                </div>
+
+                <div className="space-y-4 mb-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600">Customer Name</p>
+                      <p className="font-medium text-gray-800">{selectedQuestion.fullName}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Email</p>
+                      <p className="font-medium text-gray-800">{selectedQuestion.email}</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-gray-600">Category</p>
+                    <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
+                      {selectedQuestion.category}
+                    </span>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-gray-600 mb-2">Customer Question</p>
+                    <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <p className="text-gray-800">{selectedQuestion.question}</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="answerText" className="block text-sm font-medium text-gray-700 mb-2">
+                      Your Answer <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      id="answerText"
+                      value={answerText}
+                      onChange={(e) => {
+                        setAnswerText(e.target.value);
+                        setAnswerError('');
+                      }}
+                      placeholder="Provide a detailed answer to the customer's question..."
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                      rows={6}
+                      maxLength={2000}
+                    />
+                    <div className="flex justify-between mt-1">
+                      <span className="text-sm text-gray-500">
+                        {answerText.length}/2000 characters
+                      </span>
+                      {answerError && (
+                        <span className="text-sm text-red-500">{answerError}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => {
+                      setAnswerModalOpen(false);
+                      setAnswerText('');
+                      setAnswerError('');
+                    }}
+                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSubmitAnswer}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                  >
+                    <MessageSquare size={20} />
+                    Submit Answer
+                  </button>
                 </div>
               </div>
             </div>

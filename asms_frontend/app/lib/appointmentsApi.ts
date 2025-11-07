@@ -40,6 +40,7 @@ export interface AppointmentResponse {
   customerUsername: string;
   createdAt?: string;
   updatedAt?: string;
+   customerId: number;
 }
 
 // Helper to convert 12-hour time to 24-hour format for LocalDateTime

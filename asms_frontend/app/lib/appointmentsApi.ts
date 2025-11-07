@@ -355,6 +355,27 @@ export async function rejectAppointment(appointmentId: number): Promise<Appointm
   }
 }
 
+// Customer: Cancel appointment (change status to CANCELLED and release daily slot)
+export async function cancelAppointment(appointmentId: number): Promise<any> {
+  try {
+    const api = createAuthenticatedRequest();
+    const response = await api.put(`/api/customer/appointments/${appointmentId}/cancel`);
+    console.log('Appointment cancelled:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error cancelling appointment:', error);
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 401) {
+        localStorage.removeItem('user');
+        throw new Error('Session expired. Please sign in again.');
+      } else if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+    }
+    throw new Error('Failed to cancel appointment.');
+  }
+}
+
 // Admin: Assign employee to appointment (change status to IN_SERVICE)
 export async function assignEmployeeToAppointment(appointmentId: number, employeeId: number): Promise<AppointmentResponse> {
   try {

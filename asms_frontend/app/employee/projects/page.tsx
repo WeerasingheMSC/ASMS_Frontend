@@ -178,7 +178,7 @@ export default function ProjectsPage() {
         client: p.customerName || p.client || p.customer || 'Unknown Customer',
         status: mapAppointmentStatusToProjectStatus(p.status || 'Pending'),
         progress: calculateProgress(p.status),
-        completedDate: p.completedDate || p.completed_date || (p.status === 'Completed' ? new Date().toISOString().split('T')[0] : null),
+        completedDate: p.completedDate || p.completed_date || p.completionDate || p.completion_date || p.endDate || p.end_date || null,
         due: p.appointmentDate || p.due || p.dueDate || p.due_date || new Date().toISOString().split('T')[0],
         startDate: p.startDate || p.start_date || (p.status === 'In Service' || p.status === 'In Progress' ? new Date().toISOString().split('T')[0] : null),
         teamId: p.teamId || p.team_id,

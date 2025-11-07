@@ -301,9 +301,17 @@ export default function ProjectsTable({ projects = [], onUpdate }: ProjectsTable
     // Use the correct endpoint from backend
     const endpoint = `${API_URL}/api/employee/appointments/${projectId}/status`;
     
-    const payload = {
+    // Build payload - include completedDate if status is COMPLETED
+    const payload: any = {
       status: backendStatus
     };
+    
+    // Add completedDate to payload when status is COMPLETED
+    if (backendStatus === 'COMPLETED' && completedDate) {
+      payload.completedDate = completedDate;
+      payload.completionDate = completedDate; // Some backends might use this field name
+      payload.endDate = completedDate; // Alternative field name
+    }
     
     try {
       console.log(`📤 Sending PUT to: ${endpoint} with payload:`, payload);
@@ -321,6 +329,14 @@ export default function ProjectsTable({ projects = [], onUpdate }: ProjectsTable
       if (response.ok) {
         const responseData = await response.json().catch(() => ({}));
         console.log(`✅ Status updated successfully:`, responseData);
+        
+        // If backend returns updated data with completedDate, use it
+        if (responseData.completedDate || responseData.completionDate) {
+          return {
+            success: true,
+            completedDate: responseData.completedDate || responseData.completionDate
+          };
+        }
         return true;
       } else {
         const errorText = await response.text();
@@ -474,8 +490,8 @@ export default function ProjectsTable({ projects = [], onUpdate }: ProjectsTable
     // Update backend
     const projectId = project.id || project.projectId;
     if (projectId) {
-      const success = await updateProjectStatus(projectId, value, newProgress, newCompletedDate);
-      if (!success) {
+      const result = await updateProjectStatus(projectId, value, newProgress, newCompletedDate);
+      if (!result) {
         // Revert on failure
         setRows((prev) => {
           const copy = [...prev];
@@ -485,13 +501,32 @@ export default function ProjectsTable({ projects = [], onUpdate }: ProjectsTable
         alert('Failed to update project status. Please try again.');
       } else {
         console.log(`✅ Status changed from "${prevStatus}" to "${value}"`);
-        // Show success message in console
-        console.log(`✅ Status updated to "${value}" successfully!`);
+        
+        // If backend returned a completed date, update it
+        if (typeof result === 'object' && result.completedDate) {
+          setRows((prev) => {
+            const copy = [...prev];
+            copy[index] = {
+              ...copy[index],
+              completedDate: result.completedDate
+            };
+            return copy;
+          });
+          console.log(`✅ Completed date set to: ${result.completedDate}`);
+        }
+        
+        // Show success message
+        if (value === "Completed" && newCompletedDate) {
+          console.log(`✅ Status updated to "${value}" with completion date: ${newCompletedDate}`);
+        } else {
+          console.log(`✅ Status updated to "${value}" successfully!`);
+        }
         
         if (onUpdate) {
           // Notify parent to refetch data on success
+          // Longer delay to ensure backend has time to persist changes
           console.log('🔄 Triggering data refresh...');
-          setTimeout(() => onUpdate(), 500); // Small delay to allow backend to update
+          setTimeout(() => onUpdate(), 1500); // Increased delay to 1.5 seconds
         }
       }
     }
@@ -789,8 +824,8 @@ export default function ProjectsTable({ projects = [], onUpdate }: ProjectsTable
                   </select>
                 </td>
                 <td style={{ color: "#6b7280" }}>{p.due}</td>
-                <td style={{ color: "#6b7280" }}>
-                  {p.completedDate || "Pending"}
+                <td style={{ color: "#6b7280", fontWeight: p.completedDate ? 600 : 400 }}>
+                  {p.completedDate || "Not Completed"}
                 </td>
                 <td>
                   <div style={{ position: "relative" }}>

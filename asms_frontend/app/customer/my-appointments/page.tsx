@@ -336,40 +336,36 @@ export default function MyAppointments() {
                 )}
               </div>
             </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredAppointments.map((appointment) => (
-                <AppointmentCard
-                  key={appointment.id}
-                  appointment={transformAppointment(appointment)}
-                  hasReview={false}
-                  onReviewSubmit={(rating: string, comment: string) => {
-                    console.log('Review submitted:', { appointmentId: appointment.id, rating, comment })
-                  }}
-                  onEditReview={(appointmentId: string, rating: string, comment: string) => {
-                    console.log('Review edited:', { appointmentId, rating, comment })
-                  }}
-                  onDeleteReview={(appointmentId: string) => {
-                    console.log('Review deleted:', appointmentId)
-                  }}
-                //   onCancel={(appointmentId: string) => {
-                //     console.log('Appointment cancelled:', appointmentId)
-                //     fetchAppointments()
-                //   }}
-                  onCancel={async (appointmentId: string) => {
-                    try {
-                              await cancelAppointment(appointmentId)
-                              alert("Appointment cancelled successfully!")
-                              fetchAppointments() // refresh list
-                    } catch (error) {
-                              console.error("Cancel failed:", error)
-                              alert("Failed to cancel appointment. Please try again.")
-                    }
-                  }}
-                />
-              ))}
-            </div>
-          )}
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredAppointments.map((appointment) => (
+                  <AppointmentCard
+                    key={appointment.id}
+                    appointment={transformAppointment(appointment)}
+                    hasReview={false}
+                    onReviewSubmit={(rating: string, comment: string) => {
+                      fetchAppointments() // <CHANGE> Refetch appointments after review added
+                    }}
+                    onEditReview={(appointmentId: string, rating: string, comment: string) => {
+                      fetchAppointments() // <CHANGE> Refetch appointments after review edited
+                    }}
+                    onDeleteReview={(appointmentId: string) => {
+                      fetchAppointments() // <CHANGE> Refetch appointments after review deleted
+                    }}
+                    onCancel={async (appointmentId: string) => {
+                      try {
+                        await cancelAppointment(Number(appointmentId))
+                        alert("Appointment cancelled successfully!")
+                        fetchAppointments()
+                      } catch (error) {
+                        console.error("Cancel failed:", error)
+                        alert("Failed to cancel appointment. Please try again.")
+                      }
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

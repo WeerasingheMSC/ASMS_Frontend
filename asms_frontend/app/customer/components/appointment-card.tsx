@@ -171,7 +171,7 @@ const getToken = (): string | null => {
   }
 
   useEffect(() => {
-  if (appointment.status === "completed") {
+  if (appointment.status.toLowerCase() === "completed") {
     fetchReviewData()
   }
 }, [appointment.id])
@@ -253,19 +253,20 @@ const getToken = (): string | null => {
           )}
 
            {/* Review Button - only if completed and no review */}
-          {appointment.status === "completed" && !localReview && (
-            <Button 
-              onClick={() => setShowReviewModal(true)} 
-              variant="outline"
-              className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300"
-              size="sm"
-            >
-              <Star className="w-4 h-4 mr-1" />
-              Review
-            </Button>
-          )}
+{appointment.status.toLowerCase() === "completed" && !localReview && (
+  <Button
+    onClick={() => setShowReviewModal(true)}
+    variant="outline"
+    className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300"
+    size="sm"
+  >
+    <Star className="w-4 h-4 mr-1" />
+    Review
+  </Button>
+)}
 
-          {localReview && appointment.status === "completed" && (
+
+          {localReview && appointment.status.toLowerCase() === "completed" && (
   <div className="flex items-center gap-3">
     <div className="flex items-center text-green-600 text-sm font-medium bg-green-50 px-3 py-2 rounded-lg border border-green-200">
       <Star className="w-4 h-4 mr-1 fill-green-600" />

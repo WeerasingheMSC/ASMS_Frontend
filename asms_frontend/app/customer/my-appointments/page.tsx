@@ -8,8 +8,7 @@ import { Card } from "../components/ui/card"
 import { Plus, Search } from "lucide-react"
 import AppointmentCard from "../components/appointment-card"
 import BookingWizard from "../components/booking-wizard"
-import { getCustomerAppointments, AppointmentResponse } from "../../lib/appointmentsApi"
-import { rejectAppointment } from "../../lib/appointmentsApi"
+import { getCustomerAppointments, AppointmentResponse, cancelAppointment } from "../../lib/appointmentsApi"
 
 export default function MyAppointments() {
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([])
@@ -359,7 +358,7 @@ export default function MyAppointments() {
                 //   }}
                   onCancel={async (appointmentId: string) => {
                     try {
-                              await rejectAppointment(Number(appointmentId))
+                              await cancelAppointment(Number(appointmentId))
                               alert("Appointment cancelled successfully!")
                               fetchAppointments() // refresh list
                     } catch (error) {

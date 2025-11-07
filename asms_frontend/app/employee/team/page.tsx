@@ -16,7 +16,7 @@ interface Team {
   totalWorkingHours: number
   averageAge: number
   description?: string
-  employeeId?: string
+  employeeId?: string | number
   employeeName?: string
 }
 
@@ -77,6 +77,42 @@ export default function TeamPage() {
   const [membersError, setMembersError] = useState<string | null>(null)
   const [statsError, setStatsError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<"teams" | "members">("teams")
+  const [teamsPerView, setTeamsPerView] = useState<number>(4)
+  const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({
+    show: false,
+    message: '',
+    type: 'success'
+  })
+
+  // Show toast message
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ show: true, message, type })
+    // Auto hide after 5 seconds
+    setTimeout(() => {
+      setToast(prev => ({ ...prev, show: false }))
+    }, 5000)
+  }
+
+  // Hide toast manually
+  const hideToast = () => {
+    setToast(prev => ({ ...prev, show: false }))
+  }
+
+  // Listen for toast events from child components
+  useEffect(() => {
+    const handleToastEvent = (event: CustomEvent) => {
+      const { message, type } = event.detail;
+      showToast(message, type);
+    };
+
+    // Add event listener for custom toast events
+    window.addEventListener('showToast', handleToastEvent as EventListener);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('showToast', handleToastEvent as EventListener);
+    };
+  }, []);
 
   useEffect(() => {
     fetchTeams()
@@ -111,14 +147,13 @@ export default function TeamPage() {
         const teamsData = await response.json();
         console.log("Teams data received:", teamsData);
 
-        // Transform the API response to match your Team interface
         const transformedTeams: Team[] = teamsData.map((team: any) => ({
           id: team.id?.toString() || Math.random().toString(),
           name: team.name || team.teamName || "Unnamed Team",
           specialization: team.specialization || "General",
           memberCount: team.memberCount || 0,
           totalWorkingHours: team.totalWorkingHours || 0,
-          averageAge: team.averageAge || 0,
+          averageAge: Math.round(team.averageAge) || 0,
           description: team.description,
           employeeId: team.employeeId?.toString(),
           employeeName: team.employeeName
@@ -171,7 +206,6 @@ export default function TeamPage() {
         const responseData = await response.json();
         console.log("Team stats data received:", responseData);
 
-        // Handle both direct array and ApiResponse format
         const statsData = responseData.data || responseData;
         
         if (Array.isArray(statsData)) {
@@ -226,11 +260,9 @@ export default function TeamPage() {
         const responseData = await response.json();
         console.log("Team members data received:", responseData);
 
-        // Handle both direct array and ApiResponse format
         const membersData = responseData.data || responseData;
         
         if (Array.isArray(membersData)) {
-          // Transform the API response to match TeamMember interface
           const transformedMembers: TeamMember[] = membersData.map((member: any) => ({
             id: member.id || 0,
             fullName: member.fullName || "",
@@ -385,7 +417,7 @@ export default function TeamPage() {
     handleFormClose()
   }
 
-  const handleTeamAdded = () => {
+  const handleTeamAdded = (newTeam: Team) => {
     fetchTeams()
     fetchTeamMembers()
     fetchTeamStats()
@@ -399,11 +431,41 @@ export default function TeamPage() {
   }
 
   // Calculate summary statistics from team stats
-  const totalMembers = teamStats.reduce((sum, team) => sum + team.totalMembers, 0)
-  const totalWorkingHours = teamStats.reduce((sum, team) => sum + team.totalWorkingHours, 0)
+  const getDisplayTeams = () => {
+    if (teamStats.length > 0) {
+      return teamStats.map(stat => ({
+        id: stat.teamId.toString(),
+        name: stat.teamName,
+        specialization: stat.specialization,
+        memberCount: stat.totalMembers,
+        totalWorkingHours: stat.totalWorkingHours,
+        averageAge: Math.round(stat.averageAge) || 0,
+        description: "",
+        employeeId: "",
+        employeeName: ""
+      }))
+    }
+    return teams
+  }
+
+  const displayTeams = getDisplayTeams()
+
+  const totalMembers = teamStats.length > 0 
+    ? teamStats.reduce((sum, team) => sum + team.totalMembers, 0)
+    : teamMembers.length
+
+  const totalWorkingHours = teamStats.length > 0
+    ? teamStats.reduce((sum, team) => sum + team.totalWorkingHours, 0)
+    : teams.reduce((sum, team) => sum + team.totalWorkingHours, 0)
+
   const averageAgeAll = teamStats.length > 0 
     ? Math.round(teamStats.reduce((sum, team) => sum + team.averageAge, 0) / teamStats.length)
+    : teams.length > 0
+    ? Math.round(teams.reduce((sum, team) => sum + team.averageAge, 0) / teams.length)
     : 0
+
+  // Get teams to display based on current selection
+  const visibleTeams = displayTeams.slice(0, teamsPerView)
 
   // Retry fetches
   const retryFetchEmployee = () => {
@@ -427,28 +489,51 @@ export default function TeamPage() {
     window.location.href = '/signin';
   }
 
-  // Get team data for display - prefer stats data if available, fallback to basic teams data
-  const getDisplayTeams = () => {
-    if (teamStats.length > 0) {
-      return teamStats.map(stat => ({
-        id: stat.teamId.toString(),
-        name: stat.teamName,
-        specialization: stat.specialization,
-        memberCount: stat.totalMembers,
-        totalWorkingHours: stat.totalWorkingHours,
-        averageAge: stat.averageAge,
-        description: "",
-        employeeId: "",
-        employeeName: ""
-      }))
-    }
-    return teams
-  }
-
-  const displayTeams = getDisplayTeams()
-
   return (
     <div className={styles.teamPage}>
+      {/* Toast Notification */}
+      {toast.show && (
+        <div 
+          className={`fixed top-4 right-4 z-50 max-w-sm w-full p-4 rounded-lg shadow-lg border transform transition-all duration-300 ease-in-out ${
+            toast.type === 'success' 
+              ? 'bg-green-50 border-green-200 text-green-800' 
+              : 'bg-red-50 border-red-200 text-red-800'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              {toast.type === 'success' ? (
+                <svg className="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              )}
+              <span className="text-sm font-medium">{toast.message}</span>
+            </div>
+            <button
+              onClick={hideToast}
+              className={`ml-4 inline-flex text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent focus:ring-current ${
+                toast.type === 'success' ? 'hover:text-green-600' : 'hover:text-red-600'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          {/* Progress bar */}
+          <div 
+            className={`absolute bottom-0 left-0 h-1 rounded-b-lg transition-all duration-5000 ease-linear ${
+              toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+            }`}
+            style={{ width: '100%', animation: 'shrink 5s linear forwards' }}
+          />
+        </div>
+      )}
+
       {/* Header */}
       <div className={styles.pageHeader}>
         <div className={styles.headerContent}>
@@ -457,78 +542,22 @@ export default function TeamPage() {
               <h1>Team Management</h1>
               <p className={styles.pageSubtitle}>Manage your teams and team members</p>
             </div>
-            {/* Employee Info */}
-            <div className={styles.employeeInfo}>
-              {employeeLoading ? (
-                <div className={styles.employeeLoading}>
-                  <div className={styles.loadingSpinnerSmall}></div>
-                  <span>Loading employee info...</span>
-                </div>
-              ) : employeeError ? (
-                <div className={styles.employeeError}>
-                  <div>Using fallback employee data</div>
-                  <div className={styles.errorDetails}>{employeeError}</div>
-                  <div className={styles.employeeActions}>
-                    <button 
-                      onClick={retryFetchEmployee}
-                      className={styles.retryButton}
-                    >
-                      Retry
-                    </button>
-                    <button 
-                      onClick={handleLogout}
-                      className={styles.logoutButton}
-                    >
-                      Login Again
-                    </button>
-                  </div>
-                </div>
-              ) : employee ? (
-                <div className={styles.employeeCard}>
-                  <div className={styles.employeeAvatar}>
-                    {employee.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                  </div>
-                  <div className={styles.employeeDetails}>
-                    <div className={styles.employeeName}>{employee.name}</div>
-                    <div className={styles.employeeId}>Employee ID: {employee.id}</div>
-                    <div className={styles.employeeRole}>
-                      {employee.position || 'Team Manager'} 
-                      {employee.department && ` • ${employee.department}`}
-                    </div>
-                    {employee.email && (
-                      <div className={styles.employeeEmail}>{employee.email}</div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className={styles.employeeError}>
-                  <div>No employee data available</div>
-                  <div className={styles.employeeActions}>
-                    <button 
-                      onClick={retryFetchEmployee}
-                      className={styles.retryButton}
-                    >
-                      Retry
-                    </button>
-                    <button 
-                      onClick={handleLogout}
-                      className={styles.logoutButton}
-                    >
-                      Login
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         </div>
         
         {/* Summary Cards */}
         <div className={styles.summaryCards}>
           <div className={styles.summaryCard}>
+            <div className={styles.summaryIcon}>🏢</div>
+            <div className={styles.summaryContent}>
+              <h3>{displayTeams.length}</h3>
+              <p>Total Teams</p>
+            </div>
+          </div>
+          <div className={styles.summaryCard}>
             <div className={styles.summaryIcon}>👥</div>
             <div className={styles.summaryContent}>
-              <h3>{teamMembers.length > 0 ? teamMembers.length : totalMembers}</h3>
+              <h3>{totalMembers}</h3>
               <p>Total Members</p>
             </div>
           </div>
@@ -539,20 +568,7 @@ export default function TeamPage() {
               <p>Total ManHours/Day</p>
             </div>
           </div>
-          <div className={styles.summaryCard}>
-            <div className={styles.summaryIcon}>🎂</div>
-            <div className={styles.summaryContent}>
-              <h3>{averageAgeAll}</h3>
-              <p>Average Age</p>
-            </div>
-          </div>
-          <div className={styles.summaryCard}>
-            <div className={styles.summaryIcon}>🏢</div>
-            <div className={styles.summaryContent}>
-              <h3>{displayTeams.length}</h3>
-              <p>Total Teams</p>
-            </div>
-          </div>
+          
         </div>
       </div>
 
@@ -580,14 +596,27 @@ export default function TeamPage() {
                 <h2>Teams Overview</h2>
                 <p>Manage and view details of all specialized teams</p>
               </div>
-              <button
-                onClick={handleAddTeam}
-                className={`${styles.btnPrimary} ${styles.addTeamButton}`}
-                disabled={!employee}
-              >
-                <span className={styles.btnIcon}>+</span>
-                Add New Team
-              </button>
+              <div className={styles.viewControls}>
+                <span className={styles.viewLabel}>Show:</span>
+                <select 
+                  value={teamsPerView} 
+                  onChange={(e) => setTeamsPerView(Number(e.target.value))}
+                  className={styles.viewSelect}
+                >
+                  <option value={4}>4 Teams</option>
+                  <option value={8}>8 Teams</option>
+                  <option value={16}>16 Teams</option>
+                  <option value={displayTeams.length}>All Teams</option>
+                </select>
+                <button
+                  onClick={handleAddTeam}
+                  className={`${styles.btnPrimary} ${styles.addTeamButton}`}
+                  disabled={!employee}
+                >
+                  <span className={styles.btnIcon}>+</span>
+                  Add New Team
+                </button>
+              </div>
             </div>
           </div>
           
@@ -631,54 +660,68 @@ export default function TeamPage() {
               </button>
             </div>
           ) : (
-            <div className={styles.teamsGrid}>
-              {displayTeams.map((team) => (
-                <div key={team.id} className={styles.teamCard}>
-                  <div className={styles.cardHeader}>
-                    <h3 className={styles.cardTitle}>{team.name}</h3>
-                    <span className={styles.specializationBadge}>{team.specialization}</span>
-                  </div>
-                  <div className={styles.cardContent}>
-                    <div className={styles.teamStats}>
-                      <div className={styles.statItem}>
-                        <span className={styles.statLabel}>Members</span>
-                        <span className={styles.statValue}>{team.memberCount}</span>
+            <>
+              <div className={styles.teamsGrid}>
+                {visibleTeams.map((team) => (
+                  <div key={team.id} className={styles.teamCard}>
+                    <div className={styles.cardHeader}>
+                      <h3 className={styles.cardTitle}>{team.name}</h3>
+                      <span className={styles.specializationBadge}>{team.specialization}</span>
+                    </div>
+                    <div className={styles.cardContent}>
+                      <div className={styles.teamStats}>
+                        <div className={styles.statItem}>
+                          <span className={styles.statLabel}>Members</span>
+                          <span className={styles.statValue}>{team.memberCount}</span>
+                        </div>
+                        <div className={styles.statItem}>
+                          <span className={styles.statLabel}>Mhrs/Day</span>
+                          <span className={styles.statValue}>{team.totalWorkingHours}</span>
+                        </div>
+                        <div className={styles.statItem}>
+                          <span className={styles.statLabel}>Avg Age</span>
+                          <span className={styles.statValue}>{team.averageAge}</span>
+                        </div>
                       </div>
-                      <div className={styles.statItem}>
-                        <span className={styles.statLabel}>Hours/Day</span>
-                        <span className={styles.statValue}>{team.totalWorkingHours}</span>
-                      </div>
-                      <div className={styles.statItem}>
-                        <span className={styles.statLabel}>Avg Age</span>
-                        <span className={styles.statValue}>{team.averageAge}</span>
+                      {teamStats.find(stat => stat.teamId.toString() === team.id) && (
+                        <div className={styles.teamDetails}>
+                          <p className={styles.teamDetailText}>
+                            This team has {team.memberCount} members working {team.totalWorkingHours} hours per day.
+                          </p>
+                        </div>
+                      )}
+                      <div className={styles.cardActions}>
+                        <button
+                          onClick={() => handleAddMember(team.id)}
+                          className={`${styles.btnPrimary} ${styles.cardButton}`}
+                        >
+                          <span className={styles.btnIcon}>+</span>
+                          Add Member
+                        </button>
+                        <button
+                          onClick={() => handleViewTeamDetails(team.id)}
+                          className={`${styles.btnSecondary} ${styles.cardButton}`}
+                        >
+                          View More
+                        </button>
                       </div>
                     </div>
-                    {teamStats.find(stat => stat.teamId.toString() === team.id) && (
-                      <div className={styles.teamDetails}>
-                        <p className={styles.teamDetailText}>
-                          This team has {team.memberCount} members working {team.totalWorkingHours} hours per day.
-                        </p>
-                      </div>
-                    )}
-                    <div className={styles.cardActions}>
-                      <button
-                        onClick={() => handleAddMember(team.id)}
-                        className={`${styles.btnPrimary} ${styles.cardButton}`}
-                      >
-                        <span className={styles.btnIcon}>+</span>
-                        Add Member
-                      </button>
-                      <button
-                        onClick={() => handleViewTeamDetails(team.id)}
-                        className={`${styles.btnSecondary} ${styles.cardButton}`}
-                      >
-                        View More
-                      </button>
-                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+
+              {/* Teams Count Info */}
+              <div className={styles.teamsCountInfo}>
+                <p>
+                  Showing {visibleTeams.length} of {displayTeams.length} teams
+                  {teamsPerView < displayTeams.length && (
+                    <span className={styles.moreTeamsHint}>
+                      {" "}• Use the dropdown above to view more teams
+                    </span>
+                  )}
+                </p>
+              </div>
+            </>
           )}
         </div>
       )}
@@ -764,6 +807,14 @@ export default function TeamPage() {
           onTeamUpdated={handleTeamUpdated}
         />
       )}
+
+      {/* Add CSS for progress bar animation */}
+      <style jsx>{`
+        @keyframes shrink {
+          from { width: 100%; }
+          to { width: 0%; }
+        }
+      `}</style>
     </div>
   )
 }

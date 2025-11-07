@@ -283,6 +283,30 @@ export default function TeamForm({ teamId, onClose, onSuccess }: TeamFormProps) 
     }
   }
 
+  // Function to show success toast
+  const showSuccessToast = (message: string) => {
+    // Dispatch a custom event that the parent component can listen to
+    const event = new CustomEvent('showToast', {
+      detail: {
+        message,
+        type: 'success'
+      }
+    });
+    window.dispatchEvent(event);
+  }
+
+  // Function to show error toast
+  const showErrorToast = (message: string) => {
+    // Dispatch a custom event that the parent component can listen to
+    const event = new CustomEvent('showToast', {
+      detail: {
+        message,
+        type: 'error'
+      }
+    });
+    window.dispatchEvent(event);
+  }
+
   const onSubmit = async (data: TeamMemberFormData) => {
     try {
       setLoading(true)
@@ -344,15 +368,22 @@ export default function TeamForm({ teamId, onClose, onSuccess }: TeamFormProps) 
       const result = await response.json()
       console.log("Team member created successfully:", result)
 
-      // Show success message
-      setErrors({})
+      // Show success toast
+      showSuccessToast(`Team member "${data.fullName}" added successfully!`)
+      
+      // Call the parent callback to refresh data
       onSuccess()
-      onClose()
+      
+      // Close the modal after a short delay to show the toast
+      setTimeout(() => {
+        onClose()
+      }, 1000)
       
     } catch (error) {
       console.error("Error submitting form:", error)
       const errorMessage = error instanceof Error ? error.message : "An error occurred while adding team member"
       setErrors({ submit: errorMessage })
+      showErrorToast(errorMessage)
     } finally {
       setLoading(false)
     }

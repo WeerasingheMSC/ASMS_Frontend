@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Sidebar from '../components/Sidebar';
+import Navbar from '../components/Navbar';
 import {
   TextField,
   Button,
@@ -120,7 +121,8 @@ export default function FAQPage() {
   return (
     <div className='flex'>
       <Sidebar activeItem='FAQ' />
-      <div className='flex-1 bg-gray-50 ml-[16.666667%]'>
+      <div className='flex-1 ml-[16.666667%] bg-gray-50'>
+        <Navbar />
         <Container maxWidth="lg" className="py-6">
           <Box className="mb-8">
             <Box className="flex justify-between items-start mb-6">

@@ -196,7 +196,7 @@ export default function FAQPage() {
             </Typography>
           </Paper>
 
-          <Paper className="mt-12 p-8 text-center bg-gradient-to-r from-blue-50 to-indigo-50" elevation={1}>
+          <Paper className="mt-12 p-8 text-center bg-linear-to-r from-blue-50 to-indigo-50" elevation={1}>
             <Typography variant="h5" className="font-semibold mb-2">
               🤔 Didn't find your answer?
             </Typography>

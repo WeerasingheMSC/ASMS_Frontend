@@ -74,7 +74,7 @@ export default function MyAppointments() {
       
       <div className="flex-1 ml-[16.666667%] overflow-auto">
         <Navbar />
-        <div className="p-8">
+        <div className="p-8 pt-24">
           {/* Page Header */}
           <div className="mb-8">
             <h1 className="text-4xl font-bold text-gray-800 mb-2">My Appointments</h1>

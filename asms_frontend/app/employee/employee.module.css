@@ -1,0 +1,151 @@
+.headerIcons { align-items: center; }
+.notifyBtn { background: transparent; border: none; }
+.notifyBadge { position: absolute; top: 6px; right: 6px; width: 9px; height: 9px; background: #ef4444; border-radius: 9999px; box-shadow: 0 0 0 2px rgba(255,255,255,0.8); }
+.avatarWrap { width: 40px; height: 40px; border-radius: 9999px; overflow: hidden; border: 2px solid rgba(0,0,0,0.04); display:flex; align-items:center; justify-content:center; }
+.iconLabel { font-size: 0.8rem; color: #1e1f21; display: inline-block; vertical-align: middle; margin-left:8px; }
+
+/* Dashboard/project styles scoped to employee layout */
+.myProjects { padding: 0; }
+.projectItem { display: flex; justify-content: space-between; align-items: center; }
+.projectLeft { display:flex; gap:12px; align-items:center; }
+.iconBox { width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:700; }
+.projectMeta { display:inline-block; }
+.projectTitle { font-weight: 600; color: black; }
+.projectClient { font-size: 0.85rem; color: #131415; }
+.progressTrack { width: 220px; height: 8px; background: #eef6ff; border-radius: 9999px; overflow: hidden; }
+.progressFill { height: 100%; background: var(--primary); border-radius: 9999px; }
+.projectRight { text-align: right; min-width:120px; }
+.projectRight .percent { font-weight:600; color: var(--primary); }
+.projectRight .due { font-size:0.8rem; color: #121213; }
+.workloadChart { height: 240px; display:flex; align-items:center; justify-content:center; color:#1c1e20; }
+.scheduleList li { display:flex; gap:12px; align-items:flex-start; }
+.dot { width:10px; height:10px; border-radius:50%; margin-top:6px; }
+.dotBlue { background: var(--primary); }
+.dotGreen { background: var(--accent-green); }
+.dotYellow { background: var(--accent-orange); }
+
+/* Schedule card styles */
+.scheduleList { padding: 0; margin: 0; list-style: none; }
+.scheduleItem { display:block; }
+.scheduleLeft { display:flex; gap:12px; align-items:flex-start; }
+.eventTime { font-weight: 700; color: rgb(20, 19, 19); font-size: 0.9rem; }
+.eventTitle { font-weight: 700; color: rgb(70, 68, 68); margin-top: 4px; }
+.eventClient { color: #3a3e47; font-size: 0.85rem; margin-top: 2px; }
+
+/* Small vertical line to the left of the events (visual only) */
+.scheduleLeft::before { content: ""; width: 2px; background: rgba(99,102,241,0.05); display:block; margin-left: 8px; margin-right: -8px; }
+
+/* Icon box color variants (match screenshot colored glyph backgrounds) */
+.iconBoxBlue { background: #eef6ff; color: var(--primary); }
+.iconBoxGreen { background: #ecfdf5; color: var(--accent-green); }
+.iconBoxPink { background: #fff1f2; color: var(--accent-red); }
+
+/* Tighter heading color for card titles to match screenshot */
+.cardHeading { color: rgb(21, 30, 48); font-weight: 700; }
+
+/* Sidebar styles scoped to the employee area (nav on deep navy background) */
+.sidebar {
+	background: #172554; 
+	color: #fff;
+	position: fixed; 
+	left: 0;
+	top: 0;
+	bottom: 0;
+	width: 16.666667%; 
+	display: flex;
+	flex-direction: column;
+	z-index: 40;
+}
+
+/* Brand area */
+.brand {
+	display: flex;
+	flex-direction: column;
+	/* center children as before; we only want the horizontal line to remain at the bottom */
+	align-items: center;
+	gap: 10px;
+	padding-bottom: 12px; /* restore spacing so divider sits where the previous border was */
+	/* no parent border so the dedicated divider is used */
+	border-bottom: none;
+	position: relative; /* allow absolutely-positioned divider at the bottom */
+}
+.avatarCircle { width: 84px; height: 84px; border-radius: 9999px; overflow: hidden; display:flex; align-items:center; justify-content:center; box-shadow: 0 2px 6px rgba(0,0,0,0.25); }
+.brandName { color: #ffffff !important; font-weight: 700; margin-top: 40px; font-size: 1.5rem; }
+
+/* Small decorative divider under the brand name. Increased width for better visual balance. */
+.brandDivider {
+	position: absolute;
+	left: -60px;
+	right: 0;
+	bottom: -1px; 
+	width: 200%;
+	height: 1.2px; 
+	background: white; 
+	border-radius: 9999px;
+}
+
+/* Ensure headings, table text and project lines are clearly visible on employee pages */
+:global(h1), :global(h2), :global(h3), :global(h4), :global(h5) {
+  color: black !important;
+}
+
+:global(.bg-white h2), :global(.bg-white h3), .cardHeading {
+  color: black !important;
+}
+
+:global(table th), :global(table td) {
+  color: black !important;
+}
+
+/* Make project client lines more visible */
+.projectClient { color: black; }
+
+/* Also cover the plain class names used in the dashboard markup */
+:global(.project-meta .title), :global(.title) {
+	color: black !important;
+	font-weight: 600 !important;
+}
+:global(.project-meta .client), :global(.client) {
+	color: rgb(49, 47, 47) !important;
+	font-size: 0.85rem !important;
+}
+:global(.percent) { color: rgb(57, 55, 55) !important; font-weight:600 !important; }
+:global(.due) { color: rgb(67, 64, 64) !important; font-size:0.8rem !important; }
+
+/* Workload Overview Styles */
+.workloadContainer { display: flex; align-items: center; gap: 20px; }
+.chartWrapper { width: 160px; height: 160px; position: relative; }
+.chartCenter { position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+.chartNumber { font-size: 20px; font-weight: 700; color: #000; }
+.chartLabel { font-size: 12px; color: #000000ff; }
+.legendContainer { display: flex; flex-direction: column; gap: 8px; }
+.legendItem { display: flex; gap: 12px; align-items: center; }
+.legendDot { width: 10px; height: 10px; border-radius: 9999px; display: inline-block; }
+.legendDotCompleted { background: #16a34a; }
+.legendDotInProgress { background: #2563eb; }
+.legendDotOnHold { background: #f59e0b; }
+.legendText { color: #000; }
+.legendCount { color: #6b7280; margin-left: 6px; }
+
+/* Project Cards Styles */
+.projectsCard { max-width: 600px; }
+.summaryRow { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.summaryLeft { display: flex; gap: 8px; align-items: center; }
+.summaryTitle { font-size: 14px; font-weight: 700; color: #5e2a2aff; }
+.summaryCount { color: #292b2eff; }
+.summaryRight { display: flex; gap: 12px; align-items: center; }
+.progressBarWrapper { width: 160px; }
+.progressBarTrack { height: 8px; background: #eef2f6; border-radius: 9999px; overflow: hidden; }
+.progressBarFill { 
+  width: calc(var(--progress-percentage, 0) * 1%);
+  height: 100%; 
+  background: #16a34a; 
+}
+.progressBarLabel { font-size: 12px; color: #000; font-weight: 700; margin-top: 6px; }
+.noProjects { color: #6b7280; }
+.iconBoxInProgress { background: #fff7ed; color: #047857; }
+.dueDate { font-size: 12px; color: #6b7280; }
+
+/* Schedule Styles */
+.scheduleDate { color: #6b7280; font-size: 12px; }
+.workloadSection { max-height: 250px; max-width: 450px; overflow: hidden; }

@@ -1,0 +1,210 @@
+.container {
+  background: #ffffff;
+  padding: 22px;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(16,24,40,0.04);
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.titleBlock { display:flex; flex-direction:column; }
+.title { font-size: 1.375rem; font-weight: 800; color: #0f1724; }
+.subtitle { color: #6b7280; margin-top: 6px; font-size: 0.95rem; }
+
+.controls { display:flex; gap:8px; align-items:center; width:100%; }
+.search { position: relative; flex: 1 1 520px; max-width: 60%; }
+.search input { width:100%; padding: 6px 14px 6px 42px; border-radius: 12px; border: 1px solid #000000; background: #ffffff; color: #0f1724; height: 34px; box-sizing: border-box; }
+.search input:focus { outline: none; border-color: #000000; box-shadow: none; }
+.search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #9ca3af; }
+.filterGroup { display:flex; gap:8px; align-items:center; }
+.filterBtn { padding:6px 10px; border-radius: 8px; background: #fff; border: 1px solid #eef2f7; color:#111827; font-size:0.9rem; height:34px; display:inline-flex; align-items:center; }
+
+/* Select variants so the status select reflects the chosen status color */
+.selectCompleted { background: #ecfdf5; color: #065f46; border-color: #bbf7d0; }
+.selectInProgress { background: #fff7ed; color: #92400e; border-color: #fee2b3; }
+.selectPending { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
+.selectOverdue { background: #fff1f2; color: #9f1239; border-color: #ffd6dd; }
+
+/* keep select appearance similar to filterBtn */
+.filterBtn { -moz-appearance: none; -webkit-appearance: none; appearance: none; }
+
+/* modern styled status filter select */
+.filterSelect {
+  /* smaller, more compact pill */
+  padding: 6px 26px 6px 10px;
+  border-radius: 12px;
+  border: 1px solid #eef2f7;
+  background: #fff;
+  color: #0f1724;
+  font-weight: 600;
+  font-size: 0.9rem;
+  line-height: 1;
+  height: 40px;
+  cursor: pointer;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  position: relative;
+  transition: all 120ms ease;
+  box-shadow: 0 1px 1px rgba(2,6,23,0.04);
+}
+
+/* Action area (export button) */
+.actions { display:flex; align-items:center; margin-left:12px; }
+.exportBtn { background: #059669; color: #ffffff; border: none; padding: 9px 14px; border-radius: 8px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 10px rgba(5,150,105,0.12); }
+.exportBtn:hover { background: #047857; }
+
+/* Tabs row like screenshot */
+.tabs { display:flex; gap:12px; align-items:center; padding: 12px 6px; margin-top: 8px; }
+.tab { background: transparent; border: none; padding: 10px 14px; border-radius: 8px 8px 0 0; cursor: pointer; color: #374151; font-weight: 700; display:inline-flex; align-items:center; gap:8px; }
+.tabCount { color: #6b7280; font-weight:600; margin-left:6px; }
+.tabActive { background: #ffffff; border-bottom: 3px solid #5b21b6; color: #111827; box-shadow: 0 2px 6px rgba(16,24,40,0.04); }
+
+/* small caret on the right (keeps native dropdown but shows visual arrow) */
+.filterSelect {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none'><path d='M6 9l6 6 6-6' stroke='%23343A40' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 12px;
+}
+
+/* Status color variants for the select */
+.filterAll { background: #ffffff; color: #0f1724; border: 1px solid #000000; }
+.filterPending { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
+.filterInProgress { background: #fff7ed; color: #92400e; border-color: #fee2b3; }
+.filterCompleted { background: #ecfdf5; color: #065f46; border-color: #bbf7d0; }
+.filterOverdue { background: #fff1f2; color: #9f1239; border-color: #ffd6dd; }
+
+.tableWrap { margin-top: 25px; overflow: visible; box-shadow: 0 8px 24px rgba(16,24,40,0.06); background: #ffffff; border-radius: 12px; }
+.table { width:100%; border-collapse: collapse; }
+.table thead th { background: #152a52; color: #ffffff !important; text-transform: none; font-size: 1.05rem; padding: 20px 20px; text-align: left; border-bottom: none; font-weight:700; }
+.table tbody td { padding: 18px 20px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; color: #374151; }
+.table tbody tr:nth-child(even) { background: #fbfdff; }
+.table tbody tr:hover { background: #f8fafc; }
+.projectNameCell { display:flex; align-items:center; gap:12px; }
+.projectDot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:8px; }
+
+.badge { display:inline-block; padding:6px 10px; border-radius:9999px; font-size:0.75rem; font-weight:700; }
+.statusInProgress { background: #fff7ed; color: #b45309; }
+.statusCompleted { background: #ecfdf5; color: #065f46; }
+.statusPending { background: #f3f4f6; color: #374151; }
+.statusOverdue { background: #fff1f2; color: #9f1239; }
+
+.progressBar { width:160px; height:8px; background:#f1f5f9; border-radius:999px; overflow:hidden; }
+.progressFill { height:100%; border-radius:999px; }
+.progressFill.orange { background: #fb923c; }
+.progressFill.green { background: #16a34a; }
+.progressFill.gray { background: #9ca3af; }
+.progressFill.red { background: #ef4444; }
+
+.teamAvatars { display:flex; align-items:center; gap: -8px; }
+.avatar { width:34px; height:34px; border-radius:9999px; border: 2px solid #ffffff; box-shadow: 0 1px 2px rgba(2,6,23,0.06); display:inline-flex; overflow:hidden; }
+
+/* initial letter inside avatar */
+.avatarInitial { font-size:0.95rem; line-height:1; }
+
+/* compact member chip for team column */
+.memberChip { display:inline-flex; align-items:center; gap:8px; background:#f8fafc; padding:6px 8px; border-radius:999px; margin-right:8px; font-weight:600; color:#0f1724; box-shadow: 0 1px 2px rgba(2,6,23,0.04); }
+.memberName { font-size:0.85rem; }
+.avatarInitialSmall { width:26px; height:26px; border-radius:9999px; display:inline-flex; align-items:center; justify-content:center; background:#eef2f6; color:#111827; font-weight:700; }
+.memberChipOverflow { display:inline-flex; align-items:center; justify-content:center; width:34px; height:26px; border-radius:999px; background:#e6e7ff; color:#3730a3; font-weight:700; }
+
+/* dropdown that appears when clicking team cell */
+.teamDropdown { position: absolute; top: 44px; left: 0; z-index: 10050; background: #ffffff; border: 1px solid #eef2f7; border-radius: 8px; box-shadow: 0 6px 18px rgba(2,6,23,0.08); padding: 8px; min-width: 220px; }
+.teamDropdownUp { top: auto; bottom: 44px; }
+.teamRow { display:flex; align-items:center; gap:8px; padding:6px 8px; font-size:0.95rem; color:#0f1724; }
+.teamRow input { width:16px; height:16px; }
+.teamList { max-height: 220px; overflow:auto; padding: 4px 2px; }
+.teamDropdownFooter { display:flex; gap:8px; justify-content:flex-end; padding-top:8px; border-top:1px solid #f1f5f9; margin-top:8px; }
+.btnPrimary { background:#2563eb; color:#fff; border:none; padding:8px 12px; border-radius:8px; font-weight:700; cursor:pointer; }
+.btnPrimary:hover { background:#1d4ed8; }
+.btnSecondary { background:#fff; color:#374151; border:1px solid #e6eefc; padding:8px 12px; border-radius:8px; cursor:pointer; }
+.btnSecondary:hover { background:#f8fafc; }
+
+.footer { display:flex; align-items:center; justify-content:space-between; padding: 12px 16px; }
+.resultsInfo { color: #6b7280; font-size: 0.9rem; }
+.pagination { display:flex; gap:8px; }
+.pageBtn { width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center; border-radius:6px; border:1px solid #eef2f7; background:#fff; }
+.pageBtn.active { background:#eef2ff; border-color:#c7ddff; color:#2563eb; }
+
+/* Modal styles for project details */
+.modal { width: 760px; max-width: 100%; background: #ffffff; border-radius: 12px; box-shadow: 0 20px 50px rgba(2,6,23,0.18); overflow: hidden; }
+.modalHeader { padding: 22px 24px; border-bottom: 1px solid #f1f5f9; }
+.modalHeader h2 { margin: 0; font-size: 1.25rem; font-weight: 800; color: #0f1724; }
+.modalSubtitle { margin-top: 6px; color: #6b7280; font-size: 0.95rem; }
+.modalBody { padding: 18px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; }
+.modalRow { display:flex; gap:8px; align-items:flex-start; }
+.modalField { width: 160px; color: #6b7280; font-weight:700; }
+.modalValue { color: #111827; font-weight:600; }
+.modalActions { padding: 16px 24px; display:flex; gap:12px; justify-content:flex-end; border-top: 1px solid #f1f5f9; }
+.btnPrimary { background:#16a34a; color:#fff; border:none; padding:10px 14px; border-radius:8px; font-weight:700; cursor:pointer; }
+.btnPrimary:hover { background:#15803d; }
+.btnSecondary { background:#fff; color:#374151; border:1px solid #e6eefc; padding:10px 14px; border-radius:8px; cursor:pointer; }
+
+@media (max-width: 900px) {
+  .search { width: 320px; }
+}
+/* Add these styles to your existing projects.module.css */
+
+.clearBtn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #e5e7eb;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #6b7280;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.clearBtn:hover {
+  background: #d1d5db;
+  color: #374151;
+}
+
+.search {
+  position: relative;
+}
+
+.pageBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Status filter colors with counts */
+.filterAll {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.filterPending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.filterInProgress {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.filterCompleted {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.filterOverdue {
+  background: #fee2e2;
+  color: #991b1b;
+}

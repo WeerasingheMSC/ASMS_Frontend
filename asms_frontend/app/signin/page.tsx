@@ -22,17 +22,14 @@ const page = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          username: formData.username,
-          password: formData.password
-        }),
+        body: JSON.stringify(formData),
       });
 
       if (response.ok) {
@@ -87,6 +84,7 @@ const page = () => {
       alert('Network error. Please check if the backend is running.');
     }
   };
+
 
   const [showpassword, setShowPassword] = useState(false);
 
@@ -149,9 +147,9 @@ const page = () => {
             </div>
 
             <div className="text-sm sm:text-base">
-              <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
+              <Link href="/forgot-password" className="font-medium !text-blue-600 hover:!text-blue-400 underline">
                 Forgot password?
-              </a>
+              </Link>
             </div>
           </div>
 
@@ -165,7 +163,7 @@ const page = () => {
           <div className="text-center">
             <p className="text-sm sm:text-base text-gray-200">
               Don&apos;t have an account?{' '}
-              <Link href="/signup" className="font-medium text-blue-600 hover:text-blue-500">
+              <Link href="/signup" className="font-medium !text-blue-600 hover:!text-blue-400 underline">
                 Sign up here
               </Link>
             </p>

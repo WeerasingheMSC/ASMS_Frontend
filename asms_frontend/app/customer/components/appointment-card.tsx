@@ -19,12 +19,12 @@ interface AppointmentCardProps {
 }
 
 const STATUS_CONFIG = {
-  pending: { badge: "bg-yellow-100 text-yellow-800", label: "Pending" },
-  confirmed: { badge: "bg-blue-100 text-blue-800", label: "Confirmed" },
-  "in-service": { badge: "bg-purple-100 text-purple-800", label: "In Service" },
-  "ready-for-pickup": { badge: "bg-green-100 text-green-800", label: "Ready for Pickup" },
-  completed: { badge: "bg-teal-100 text-teal-800", label: "Completed" },
-  cancelled: { badge: "bg-red-100 text-red-800", label: "Cancelled" },
+  PENDING: { badge: "bg-yellow-100 text-yellow-800", label: "Pending" },
+  CONFIRMED: { badge: "bg-blue-100 text-blue-800", label: "Confirmed" },
+  IN_SERVICE: { badge: "bg-purple-100 text-purple-800", label: "In Service" },
+  READY: { badge: "bg-green-100 text-green-800", label: "Ready for Pickup" },
+  COMPLETED: { badge: "bg-teal-100 text-teal-800", label: "Completed" },
+  CANCELLED: { badge: "bg-red-100 text-red-800", label: "Cancelled" },
 }
 
 
@@ -42,7 +42,7 @@ export default function AppointmentCard({
   const [showReviewActions, setShowReviewActions] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [reviewId, setReviewId] = useState<number | null>(null)
-  const config = STATUS_CONFIG[appointment.status as keyof typeof STATUS_CONFIG]
+  const config = STATUS_CONFIG[appointment.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.PENDING
   const appointmentDate = new Date(appointment.date)
   const dateStr = appointmentDate.toLocaleDateString("en-US", {
     month: "short",
@@ -236,38 +236,41 @@ const getToken = (): string | null => {
             <div className="mb-4 p-3 bg-gray-100 rounded text-sm text-black">{appointment.notes}</div>
           )}
 
-          {/* Action Buttons */}
-          <div className="flex justify-end space-x-2 pt-4">
-            {appointment.status === "pending" && (
-              <Button
-                onClick={() => onCancel(appointment.id)}
-                variant="outline"
-                className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
-                size="sm"
-              >
-                <Trash2 className="w-4 h-4 mr-1" />
-                Cancel
-              </Button>
-            )}
+        
+        {/* Action Buttons - Bottom Right Corner */}
+        <div className="flex justify-end space-x-2 pt-4 ">
+          {/* Cancel Button - only if pending */}
+          {appointment.status === "pending" && (
+            <Button
+              onClick={() => onCancel(appointment.id)}
+              variant="outline"
+              className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+              size="sm"
+            >
+              <Trash2 className="w-4 h-4 mr-1" />
+              Cancel
+            </Button>
+          )}
 
-            {appointment.status === "completed" && !localReview && (
-              <Button
-                onClick={() => setShowReviewModal(true)}
-                variant="outline"
-                className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300"
-                size="sm"
-              >
-                <Star className="w-4 h-4 mr-1" />
-                Review
-              </Button>
-            )}
+           {/* Review Button - only if completed and no review */}
+          {appointment.status === "completed" && !localReview && (
+            <Button 
+              onClick={() => setShowReviewModal(true)} 
+              variant="outline"
+              className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300"
+              size="sm"
+            >
+              <Star className="w-4 h-4 mr-1" />
+              Review
+            </Button>
+          )}
 
-            {localReview && appointment.status === "completed" && (            
-              <div className="flex items-center gap-3">
-                <div className="flex items-center text-green-600 text-sm font-medium bg-green-50 px-3 py-2 rounded-lg border border-green-200">
-                  <Star className="w-4 h-4 mr-1 fill-green-600" />
-                  Reviewed ({localReview.rating}/5)
-                </div>
+          {localReview && appointment.status === "completed" && (
+  <div className="flex items-center gap-3">
+    <div className="flex items-center text-green-600 text-sm font-medium bg-green-50 px-3 py-2 rounded-lg border border-green-200">
+      <Star className="w-4 h-4 mr-1 fill-green-600" />
+      Reviewed ({localReview.rating}/5)
+    </div>
 
                 <button
                   onClick={() => {

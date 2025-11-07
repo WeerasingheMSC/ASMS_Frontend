@@ -4,6 +4,7 @@ import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { FaUser, FaEnvelope, FaLock, FaUserTag } from 'react-icons/fa';
+import { IoEye, IoEyeOff } from 'react-icons/io5';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -20,10 +21,13 @@ const SignUpForm = () => {
     role: roleFromUrl
   });
 
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const getRoleDisplayName = (role: string) => {
     switch(role) {
       case 'ROLE_CUSTOMER': return 'Customer';
-      case 'ROLE_MECHANIC': return 'Mechanic';
+      case 'ROLE_EMPLOYEE': return 'Employee';
       case 'ROLE_ADMIN': return 'Admin';
       default: return 'Customer';
     }
@@ -32,7 +36,7 @@ const SignUpForm = () => {
   const getRoleColor = (role: string) => {
     switch(role) {
       case 'ROLE_CUSTOMER': return 'text-blue-600';
-      case 'ROLE_MECHANIC': return 'text-green-600';
+      case 'ROLE_EMPLOYEE': return 'text-green-600';
       case 'ROLE_ADMIN': return 'text-purple-600';
       default: return 'text-blue-600';
     }
@@ -173,20 +177,21 @@ const SignUpForm = () => {
             <label htmlFor="password" className="block text-white text-sm sm:text-base font-medium mb-2">
               Password
             </label>
-            <div className="relative">
-              <FaLock className="text-black relative text-xl top-8 left-2 z-10" />
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="off"
-                required
-                className="w-full px-10 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white placeholder-gray-500"
-                placeholder="Enter your password"
-                value={formData.password}
-                onChange={handleChange}
-              />
-            </div>
+            <FaLock className="relative lg:text-2xl text-lg lg:top-10 top-7 left-2" />
+            <input
+              id="password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="off"
+              required
+              className="w-full px-10 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white placeholder-gray-500"
+              placeholder="Enter your password"
+              value={formData.password}
+              onChange={handleChange}
+            />
+            <button type="button" onClick={() => setShowPassword(!showPassword)} className="relative lg:left-100 md:left-85 left-60 lg:-top-9 -top-7">
+              {showPassword ? <IoEyeOff className="text-black lg:text-2xl text-xl" /> : <IoEye className="text-black lg:text-2xl text-xl"/>}
+            </button>
           </div>
 
           {/* Confirm Password */}
@@ -194,20 +199,21 @@ const SignUpForm = () => {
             <label htmlFor="confirmPassword" className="block text-white text-sm sm:text-base font-medium mb-2">
               Confirm Password
             </label>
-            <div className="relative">
-              <FaLock className="text-black relative text-xl top-8 left-2 z-10" />
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                autoComplete="off"
-                required
-                className="w-full px-10 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white placeholder-gray-500"
-                placeholder="Confirm your password"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-              />
-            </div>
+            <FaLock className="relative lg:text-2xl text-lg lg:top-10 top-7 left-2" />
+            <input
+              id="confirmPassword"
+              name="confirmPassword"
+              type={showConfirmPassword ? "text" : "password"}
+              autoComplete="off"
+              required
+              className="w-full px-10 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white placeholder-gray-500"
+              placeholder="Confirm your password"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+            />
+            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="relative lg:left-100 md:left-85 left-60 lg:-top-9 -top-7">
+              {showConfirmPassword ? <IoEyeOff className="text-black lg:text-2xl text-xl" /> : <IoEye className="text-black lg:text-2xl text-xl"/>}
+            </button>
           </div>
 
           {/* Terms and Conditions */}
@@ -239,7 +245,7 @@ const SignUpForm = () => {
           <div className="text-center">
             <p className="text-sm sm:text-base text-gray-200">
               Already have an account?{' '}
-              <Link href="/signin" className="font-medium text-blue-400 hover:text-blue-300">
+              <Link href="/signin" className="font-medium !text-blue-400 !hover:text-blue-300">
                 Sign in here
               </Link>
             </p>

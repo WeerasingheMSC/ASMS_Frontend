@@ -36,8 +36,14 @@ export interface AppointmentResponse {
   additionalRequirements?: string;
   appointmentDate: string; // ISO datetime string from backend
   timeSlot: string;
-  status: string; // PENDING, CONFIRMED, COMPLETED, CANCELLED
+  status: string; // PENDING, CONFIRMED, COMPLETED, CANCELLED, IN_SERVICE, READY
   customerUsername: string;
+  customerEmail: string;
+  customerPhone: string;
+  customerFirstName: string;
+  customerLastName: string;
+  assignedEmployeeId?: number;
+  assignedEmployeeName?: string;
   createdAt?: string;
   updatedAt?: string;
    customerId: number;
@@ -289,41 +295,105 @@ export async function getAppointmentStatus(appointmentId: number): Promise<strin
   }
 }
 
-//Cancel appointment
-export async function cancelAppointment(appointmentId: string) {
-  const userData = localStorage.getItem("user");
-
-  if (!userData) {
-    throw new Error("No user data found. Please log in again.");
+// Admin: Get all appointments
+export async function getAllAppointments(): Promise<AppointmentResponse[]> {
+  try {
+    const api = createAuthenticatedRequest();
+    const response = await api.get('/api/admin/appointments');
+    console.log('Fetched all appointments:', response.data);
+    return response.data as AppointmentResponse[];
+  } catch (error) {
+    console.error('Error fetching all appointments:', error);
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 401) {
+        localStorage.removeItem('user');
+        throw new Error('Session expired. Please sign in again.');
+      }
+    }
+    throw new Error('Failed to fetch appointments.');
   }
-
-  const user = JSON.parse(userData);
-  const token = user.token;
-
-  if (!token) {
-    throw new Error("No token found. Please sign in again.");
-  }
-
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-  const endpoint = `${apiUrl}/api/customer/appointments/${appointmentId}/cancel`;
-
-  console.log("🟡 Sending cancel request to:", endpoint);
-
-  const response = await fetch(endpoint, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("❌ Cancel appointment failed:", errorText);
-    throw new Error("Failed to cancel appointment");
-  }
-
-  console.log("✅ Appointment cancelled successfully!");
-  return await response.json();
 }
 
+// Admin: Approve appointment (change status from PENDING to CONFIRMED)
+export async function approveAppointment(appointmentId: number): Promise<AppointmentResponse> {
+  try {
+    const api = createAuthenticatedRequest();
+    const response = await api.put(`/api/admin/appointments/${appointmentId}/approve`);
+    console.log('Appointment approved:', response.data);
+    return response.data as AppointmentResponse;
+  } catch (error) {
+    console.error('Error approving appointment:', error);
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 401) {
+        localStorage.removeItem('user');
+        throw new Error('Session expired. Please sign in again.');
+      } else if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+    }
+    throw new Error('Failed to approve appointment.');
+  }
+}
+
+// Admin: Reject appointment (change status to CANCELLED)
+export async function rejectAppointment(appointmentId: number): Promise<AppointmentResponse> {
+  try {
+    const api = createAuthenticatedRequest();
+    const response = await api.put(`/api/admin/appointments/${appointmentId}/reject`);
+    console.log('Appointment rejected:', response.data);
+    return response.data as AppointmentResponse;
+  } catch (error) {
+    console.error('Error rejecting appointment:', error);
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 401) {
+        localStorage.removeItem('user');
+        throw new Error('Session expired. Please sign in again.');
+      } else if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+    }
+    throw new Error('Failed to reject appointment.');
+  }
+}
+
+// Customer: Cancel appointment (change status to CANCELLED and release daily slot)
+export async function cancelAppointment(appointmentId: number): Promise<any> {
+  try {
+    const api = createAuthenticatedRequest();
+    const response = await api.put(`/api/customer/appointments/${appointmentId}/cancel`);
+    console.log('Appointment cancelled:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error cancelling appointment:', error);
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 401) {
+        localStorage.removeItem('user');
+        throw new Error('Session expired. Please sign in again.');
+      } else if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+    }
+    throw new Error('Failed to cancel appointment.');
+  }
+}
+
+// Admin: Assign employee to appointment (change status to IN_SERVICE)
+export async function assignEmployeeToAppointment(appointmentId: number, employeeId: number): Promise<AppointmentResponse> {
+  try {
+    const api = createAuthenticatedRequest();
+    const response = await api.put(`/api/admin/appointments/${appointmentId}/assign/${employeeId}`);
+    console.log('Employee assigned to appointment:', response.data);
+    return response.data as AppointmentResponse;
+  } catch (error) {
+    console.error('Error assigning employee to appointment:', error);
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 401) {
+        localStorage.removeItem('user');
+        throw new Error('Session expired. Please sign in again.');
+      } else if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+    }
+    throw new Error('Failed to assign employee to appointment.');
+  }
+}

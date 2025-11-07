@@ -1,6 +1,7 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
+import Navbar from '../components/Navbar'
 import { TextField, InputAdornment, IconButton, Tooltip, Tabs, Tab, Box, Chip, Checkbox } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -11,6 +12,9 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import { getAllAppointments, approveAppointment, rejectAppointment, assignEmployeeToAppointment, AppointmentResponse } from '../../lib/appointmentsApi';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 interface Appointment {
   id: number;
@@ -24,9 +28,22 @@ interface Appointment {
   serviceType: string;
   appointmentDate: string;
   appointmentTime: string;
-  status: 'pending' | 'approved' | 'completed';
+  status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'IN_SERVICE' | 'READY';
   assignedEmployee?: string;
+  assignedEmployeeId?: number;
   notes?: string;
+}
+
+interface Employee {
+  id: number;
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  position: string;
+  department: string;
+  isActive: boolean;
 }
 
 const AppointmentsPage = () => {
@@ -35,65 +52,152 @@ const AppointmentsPage = () => {
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loadingEmployees, setLoadingEmployees] = useState(false);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loadingAppointments, setLoadingAppointments] = useState(true);
+  const [error, setError] = useState('');
 
-  // Sample appointments data
-  const [appointments] = useState<Appointment[]>([
-    {
-      id: 1,
-      customerName: 'John Doe',
-      customerEmail: 'john@example.com',
-      customerPhone: '123-456-7890',
-      vehicleMake: 'Toyota',
-      vehicleModel: 'Camry',
-      vehicleYear: '2020',
-      vehiclePlate: 'ABC-1234',
-      serviceType: 'Oil Change',
-      appointmentDate: '2025-11-05',
-      appointmentTime: '10:00 AM',
-      status: 'pending',
-      notes: 'Customer requested early morning service'
-    },
-    {
-      id: 2,
-      customerName: 'Jane Smith',
-      customerEmail: 'jane@example.com',
-      customerPhone: '098-765-4321',
-      vehicleMake: 'Honda',
-      vehicleModel: 'Civic',
-      vehicleYear: '2019',
-      vehiclePlate: 'XYZ-5678',
-      serviceType: 'Brake Inspection',
-      appointmentDate: '2025-11-06',
-      appointmentTime: '02:00 PM',
-      status: 'approved',
-      assignedEmployee: 'Mike Johnson'
-    },
-    {
-      id: 3,
-      customerName: 'Robert Brown',
-      customerEmail: 'robert@example.com',
-      customerPhone: '555-123-4567',
-      vehicleMake: 'Ford',
-      vehicleModel: 'F-150',
-      vehicleYear: '2021',
-      vehiclePlate: 'DEF-9012',
-      serviceType: 'Engine Diagnostic',
-      appointmentDate: '2025-10-28',
-      appointmentTime: '09:00 AM',
-      status: 'completed',
-      assignedEmployee: 'Sarah Williams'
-    },
-  ]);
+  // Fetch appointments from backend
+  useEffect(() => {
+    fetchAppointments();
+  }, []);
 
-  // Sample employees for assignment
-  const [employees] = useState([
-    { id: 1, name: 'Mike Johnson' },
-    { id: 2, name: 'Sarah Williams' },
-    { id: 3, name: 'Tom Anderson' },
-  ]);
+  // Fetch employees from backend
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+
+  const fetchAppointments = async () => {
+    setLoadingAppointments(true);
+    setError('');
+    try {
+      const data = await getAllAppointments();
+      console.log('Fetched appointments from backend:', data);
+      
+      // Transform backend response to frontend format
+      const transformedAppointments: Appointment[] = data.map((apt: AppointmentResponse) => ({
+        id: apt.id,
+        customerName: apt.customerFirstName && apt.customerLastName 
+          ? `${apt.customerFirstName} ${apt.customerLastName}` 
+          : apt.customerUsername || 'Unknown Customer',
+        customerEmail: apt.customerEmail || '',
+        customerPhone: apt.customerPhone || '',
+        vehicleMake: apt.vehicleBrand,
+        vehicleModel: apt.model,
+        vehicleYear: apt.yearOfManufacture,
+        vehiclePlate: apt.registerNumber,
+        serviceType: apt.serviceType,
+        appointmentDate: apt.appointmentDate.split('T')[0], // Extract date from ISO string
+        appointmentTime: apt.timeSlot,
+        status: apt.status as 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'IN_SERVICE' | 'READY',
+        notes: apt.additionalRequirements || '',
+        assignedEmployee: apt.assignedEmployeeName,
+        assignedEmployeeId: apt.assignedEmployeeId,
+      }));
+
+      console.log('Transformed appointments:', transformedAppointments);
+      setAppointments(transformedAppointments);
+    } catch (error) {
+      console.error('Error fetching appointments:', error);
+      setError('Failed to load appointments. Using sample data.');
+      // Keep sample data as fallback
+    } finally {
+      setLoadingAppointments(false);
+    }
+  };
+
+  const fetchEmployees = async () => {
+    setLoadingEmployees(true);
+    try {
+      const userData = localStorage.getItem('user');
+      
+      if (!userData) {
+        console.error('No user data found');
+        // Use mock data as fallback
+        setEmployees([
+          { 
+            id: 1, 
+            username: 'mikej', 
+            email: 'mike@example.com',
+            firstName: 'Mike', 
+            lastName: 'Johnson',
+            phoneNumber: '123-456-7890',
+            position: 'Technician',
+            department: 'Service',
+            isActive: true
+          },
+          { 
+            id: 2, 
+            username: 'sarahw', 
+            email: 'sarah@example.com',
+            firstName: 'Sarah', 
+            lastName: 'Williams',
+            phoneNumber: '098-765-4321',
+            position: 'Senior Technician',
+            department: 'Service',
+            isActive: true
+          },
+        ] as Employee[]);
+        setLoadingEmployees(false);
+        return;
+      }
+
+      const user = JSON.parse(userData);
+      const response = await fetch(`${API_URL}/api/admin/employees`, {
+        headers: {
+          'Authorization': `Bearer ${user.token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Fetched employees:', data);
+        // Filter only active employees
+        const activeEmployees = data.filter((emp: Employee) => emp.isActive);
+        setEmployees(activeEmployees);
+      } else {
+        const errorText = await response.text();
+        console.error('Failed to fetch employees. Status:', response.status, 'Error:', errorText);
+        // Use mock data as fallback
+        setEmployees([
+          { 
+            id: 1, 
+            username: 'mikej', 
+            email: 'mike@example.com',
+            firstName: 'Mike', 
+            lastName: 'Johnson',
+            phoneNumber: '123-456-7890',
+            position: 'Technician',
+            department: 'Service',
+            isActive: true
+          },
+        ] as Employee[]);
+      }
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+      // Use mock data as fallback
+      setEmployees([
+        { 
+          id: 1, 
+          username: 'mikej', 
+          email: 'mike@example.com',
+          firstName: 'Mike', 
+          lastName: 'Johnson',
+          phoneNumber: '123-456-7890',
+          position: 'Technician',
+          department: 'Service',
+          isActive: true
+        },
+      ] as Employee[]);
+    } finally {
+      setLoadingEmployees(false);
+    }
+  };
 
   // Filter appointments by status and search
-  const filterAppointments = (status: 'pending' | 'approved' | 'completed') => {
+  const filterAppointments = (status: 'PENDING' | 'CONFIRMED' | 'IN_SERVICE' | 'COMPLETED') => {
     return appointments.filter(apt => 
       apt.status === status &&
       (apt.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -105,16 +209,18 @@ const AppointmentsPage = () => {
     );
   };
 
-  const pendingAppointments = filterAppointments('pending');
-  const approvedAppointments = filterAppointments('approved');
-  const completedAppointments = filterAppointments('completed');
+  const pendingAppointments = filterAppointments('PENDING');
+  const approvedAppointments = filterAppointments('CONFIRMED');
+  const inServiceAppointments = filterAppointments('IN_SERVICE');
+  const completedAppointments = filterAppointments('COMPLETED');
 
   // Get current tab appointments
   const getCurrentAppointments = () => {
     switch(tabValue) {
       case 0: return pendingAppointments;
       case 1: return approvedAppointments;
-      case 2: return completedAppointments;
+      case 2: return inServiceAppointments;
+      case 3: return completedAppointments;
       default: return [];
     }
   };
@@ -168,20 +274,81 @@ const AppointmentsPage = () => {
     saveAs(data, `appointments_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
-  const handleApprove = (id: number) => {
-    console.log('Approve appointment:', id);
-    // Add your approve logic here
+  const handleApprove = async (id: number) => {
+    try {
+      console.log('Approving appointment:', id);
+      await approveAppointment(id);
+      
+      // Refresh appointments list to reflect the change
+      await fetchAppointments();
+      
+      alert('Appointment approved successfully! Customer status changed to CONFIRMED.');
+    } catch (error: any) {
+      console.error('Failed to approve appointment:', error);
+      alert(error.message || 'Failed to approve appointment. Please try again.');
+    }
   };
 
-  const handleReject = (id: number) => {
-    console.log('Reject appointment:', id);
-    // Add your reject logic here
+  const handleReject = async (id: number) => {
+    if (!confirm('Are you sure you want to reject this appointment?')) {
+      return;
+    }
+    
+    try {
+      console.log('Rejecting appointment:', id);
+      await rejectAppointment(id);
+      
+      // Refresh appointments list to reflect the change
+      await fetchAppointments();
+      
+      alert('Appointment rejected successfully! Status changed to CANCELLED.');
+    } catch (error: any) {
+      console.error('Failed to reject appointment:', error);
+      alert(error.message || 'Failed to reject appointment. Please try again.');
+    }
   };
 
   const handleAssignEmployee = (appointmentId: number) => {
     const appointment = appointments.find(apt => apt.id === appointmentId);
     setSelectedAppointment(appointment || null);
     setIsAssignModalOpen(true);
+    // Refresh employee list when opening modal to get latest employees
+    fetchEmployees();
+  };
+
+  const handleAssignEmployeeToAppointment = async (employeeId: number, employeeName: string) => {
+    if (!selectedAppointment) return;
+
+    try {
+      // Call the backend API to assign employee and change status to IN_SERVICE
+      await assignEmployeeToAppointment(selectedAppointment.id, employeeId);
+
+      // Update the appointments array with the assigned employee and new status
+      setAppointments(prevAppointments =>
+        prevAppointments.map(apt =>
+          apt.id === selectedAppointment.id
+            ? {
+                ...apt,
+                assignedEmployee: employeeName,
+                assignedEmployeeId: employeeId,
+                status: 'IN_SERVICE', // Update status to IN_SERVICE
+              }
+            : apt
+        )
+      );
+
+      // Close the modal
+      setIsAssignModalOpen(false);
+      
+      // Show success message
+      console.log(`Successfully assigned ${employeeName} to appointment #${selectedAppointment.id} - Status changed to IN_SERVICE`);
+      
+      // Refresh appointments to get latest data from backend
+      fetchAppointments();
+    } catch (error) {
+      console.error('Error assigning employee:', error);
+      alert('Failed to assign employee. Please try again.');
+    }
   };
 
   const handleViewDetails = (appointment: Appointment) => {
@@ -202,9 +369,11 @@ const AppointmentsPage = () => {
     <div className='flex h-screen overflow-hidden'>
       <Sidebar activeItem="Appointments" />
 
-      <div className='w-5/6 p-8 bg-gray-50 relative overflow-y-auto'>
-        <div className='flex justify-between items-center mb-6'>
-          <h1 className='text-3xl font-bold text-gray-800'>Appointment Management</h1>
+      <div className='flex-1 flex flex-col'>
+        <Navbar />
+        <div className='flex-1 p-8 bg-gray-50 relative overflow-y-auto'>
+          <div className='flex justify-between items-center mb-6'>
+            <h1 className='text-3xl font-bold text-blue-800'>Appointment Management</h1>
           <div className='flex gap-4'>
             <div className='bg-white px-4 py-2 rounded-lg shadow-md'>
               <span className='text-sm text-gray-600'>Pending: </span>
@@ -213,6 +382,10 @@ const AppointmentsPage = () => {
             <div className='bg-white px-4 py-2 rounded-lg shadow-md'>
               <span className='text-sm text-gray-600'>Approved: </span>
               <span className='font-bold text-green-600'>{approvedAppointments.length}</span>
+            </div>
+            <div className='bg-white px-4 py-2 rounded-lg shadow-md'>
+              <span className='text-sm text-gray-600'>In Service: </span>
+              <span className='font-bold text-purple-600'>{inServiceAppointments.length}</span>
             </div>
             <div className='bg-white px-4 py-2 rounded-lg shadow-md'>
               <span className='text-sm text-gray-600'>Completed: </span>
@@ -269,7 +442,7 @@ const AppointmentsPage = () => {
             <Tooltip title={selectedRows.length > 0 ? `Export ${selectedRows.length} selected rows to CSV` : 'Export all filtered data to CSV'}>
               <button
                 onClick={handleExportCSV}
-                className='bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors shadow-md flex items-center gap-2 whitespace-nowrap'
+                className='bg-green-700 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-600 transition-colors shadow-md flex items-center gap-2 whitespace-nowrap'
               >
                 <FileDownloadIcon />
                 Export to CSV
@@ -288,16 +461,27 @@ const AppointmentsPage = () => {
           <Tabs 
             value={tabValue} 
             onChange={(e, newValue) => setTabValue(newValue)}
+            TabIndicatorProps={{
+              style: {
+                backgroundColor: tabValue === 0 ? '#f97316' : tabValue === 1 ? '#10b981' : tabValue === 2 ? '#8b5cf6' : '#3b82f6',
+                height: '3px',
+              },
+            }}
             sx={{
               '& .MuiTab-root': {
                 textTransform: 'none',
                 fontWeight: 600,
                 fontSize: '16px',
+                color: '#000000',
+                '&.Mui-selected': {
+                  color: tabValue === 0 ? '#f97316' : tabValue === 1 ? '#10b981' : tabValue === 2 ? '#8b5cf6' : '#3b82f6',
+                },
               },
             }}
           >
             <Tab label={`In Progress (${pendingAppointments.length})`} />
             <Tab label={`Approved (${approvedAppointments.length})`} />
+            <Tab label={`In Service (${inServiceAppointments.length})`} />
             <Tab label={`Completed (${completedAppointments.length})`} />
           </Tabs>
         </Box>
@@ -307,7 +491,7 @@ const AppointmentsPage = () => {
         {tabValue === 0 && (
           <div className='bg-white rounded-b-lg shadow-md overflow-hidden'>
             <table className='w-full'>
-              <thead className='bg-indigo-700 text-white'>
+              <thead className='bg-gray-800 text-white'>
                 <tr>
                   <th className='px-4 py-4 text-left'>
                     <Checkbox
@@ -325,25 +509,25 @@ const AppointmentsPage = () => {
                       }}
                     />
                   </th>
-                  <th className='px-4 py-4 text-left'>ID</th>
-                  <th className='px-4 py-4 text-left'>Customer</th>
-                  <th className='px-4 py-4 text-left'>Contact</th>
-                  <th className='px-4 py-4 text-left'>Vehicle</th>
-                  <th className='px-4 py-4 text-left'>Service</th>
-                  <th className='px-4 py-4 text-left'>Date & Time</th>
-                  <th className='px-4 py-4 text-center'>Actions</th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>ID</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Customer</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Contact</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Vehicle</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Service</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Date & Time</p></th>
+                  <th className='px-4 py-4 text-center'><p className='text-white'>Actions</p></th>
                 </tr>
               </thead>
               <tbody>
                 {pendingAppointments.map((apt, index) => (
-                  <tr key={apt.id} className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-indigo-50 transition-colors`}>
+                  <tr key={apt.id} className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-gray-100 transition-colors`}>
                     <td className='px-4 py-4'>
                       <Checkbox
                         checked={selectedRows.includes(apt.id)}
                         onChange={() => handleSelectRow(apt.id)}
                         onClick={(e) => e.stopPropagation()}
                         sx={{
-                          color: '#6E8CFB',
+                          color: '#000000',
                           '&.Mui-checked': {
                             color: '#f97316',
                           },
@@ -353,17 +537,17 @@ const AppointmentsPage = () => {
                     <td className='px-4 py-4 font-medium text-gray-900'>{apt.id}</td>
                     <td className='px-4 py-4'>
                       <div className='font-semibold text-gray-900'>{apt.customerName}</div>
-                      <div className='text-sm text-gray-600'>{apt.customerEmail}</div>
+                      <div className='text-sm text-gray-900'>{apt.customerEmail}</div>
                     </td>
-                    <td className='px-4 py-4 text-gray-700 font-medium'>{apt.customerPhone}</td>
+                    <td className='px-4 py-4 text-gray-900 font-medium'>{apt.customerPhone}</td>
                     <td className='px-4 py-4'>
                       <div className='font-semibold text-gray-900'>{apt.vehicleMake} {apt.vehicleModel}</div>
-                      <div className='text-sm text-gray-600'>{apt.vehicleYear} - {apt.vehiclePlate}</div>
+                      <div className='text-sm text-gray-900'>{apt.vehicleYear} - {apt.vehiclePlate}</div>
                     </td>
-                    <td className='px-4 py-4 text-gray-700 font-medium'>{apt.serviceType}</td>
+                    <td className='px-4 py-4 text-gray-900 font-medium'>{apt.serviceType}</td>
                     <td className='px-4 py-4'>
                       <div className='font-medium text-gray-900'>{apt.appointmentDate}</div>
-                      <div className='text-sm text-gray-600'>{apt.appointmentTime}</div>
+                      <div className='text-sm text-gray-900'>{apt.appointmentTime}</div>
                     </td>
                     <td className='px-4 py-4'>
                       <div className='flex gap-2 justify-center'>
@@ -414,7 +598,7 @@ const AppointmentsPage = () => {
         {tabValue === 1 && (
           <div className='bg-white rounded-b-lg shadow-md overflow-hidden'>
             <table className='w-full'>
-              <thead className='bg-indigo-700 text-white'>
+              <thead className='bg-gray-800 text-white'>
                 <tr>
                   <th className='px-4 py-4 text-left'>
                     <Checkbox
@@ -432,26 +616,26 @@ const AppointmentsPage = () => {
                       }}
                     />
                   </th>
-                  <th className='px-4 py-4 text-left'>ID</th>
-                  <th className='px-4 py-4 text-left'>Customer</th>
-                  <th className='px-4 py-4 text-left'>Contact</th>
-                  <th className='px-4 py-4 text-left'>Vehicle</th>
-                  <th className='px-4 py-4 text-left'>Service</th>
-                  <th className='px-4 py-4 text-left'>Date & Time</th>
-                  <th className='px-4 py-4 text-left'>Assigned To</th>
-                  <th className='px-4 py-4 text-center'>Actions</th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>ID</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Customer</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Contact</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Vehicle</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Service</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Date & Time</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Assigned To</p></th>
+                  <th className='px-4 py-4 text-center'><p className='text-white'>Actions</p></th>
                 </tr>
               </thead>
               <tbody>
                 {approvedAppointments.map((apt, index) => (
-                  <tr key={apt.id} className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-yellow-50 transition-colors`}>
+                  <tr key={apt.id} className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-gray-100 transition-colors`}>
                     <td className='px-4 py-4'>
                       <Checkbox
                         checked={selectedRows.includes(apt.id)}
                         onChange={() => handleSelectRow(apt.id)}
                         onClick={(e) => e.stopPropagation()}
                         sx={{
-                          color: '#FAB12F',
+                          color: '#000000',
                           '&.Mui-checked': {
                             color: '#16a34a',
                           },
@@ -461,17 +645,17 @@ const AppointmentsPage = () => {
                     <td className='px-4 py-4 font-medium text-gray-900'>{apt.id}</td>
                     <td className='px-4 py-4'>
                       <div className='font-semibold text-gray-900'>{apt.customerName}</div>
-                      <div className='text-sm text-gray-600'>{apt.customerEmail}</div>
+                      <div className='text-sm text-gray-900'>{apt.customerEmail}</div>
                     </td>
-                    <td className='px-4 py-4 text-gray-700 font-medium'>{apt.customerPhone}</td>
+                    <td className='px-4 py-4 text-gray-000 font-medium'>{apt.customerPhone}</td>
                     <td className='px-4 py-4'>
                       <div className='font-semibold text-gray-900'>{apt.vehicleMake} {apt.vehicleModel}</div>
                       <div className='text-sm text-gray-600'>{apt.vehicleYear} - {apt.vehiclePlate}</div>
                     </td>
-                    <td className='px-4 py-4 text-gray-700 font-medium'>{apt.serviceType}</td>
+                    <td className='px-4 py-4 text-gray-900 font-medium'>{apt.serviceType}</td>
                     <td className='px-4 py-4'>
                       <div className='font-medium text-gray-900'>{apt.appointmentDate}</div>
-                      <div className='text-sm text-gray-600'>{apt.appointmentTime}</div>
+                      <div className='text-sm text-gray-900'>{apt.appointmentTime}</div>
                     </td>
                     <td className='px-4 py-4'>
                       {apt.assignedEmployee ? (
@@ -516,11 +700,11 @@ const AppointmentsPage = () => {
           </div>
         )}
 
-        {/* Completed Appointments */}
+        {/* In Service Appointments (Assigned to Employees) */}
         {tabValue === 2 && (
           <div className='bg-white rounded-b-lg shadow-md overflow-hidden'>
             <table className='w-full'>
-              <thead className='bg-indigo-700 text-white'>
+              <thead className='bg-gray-800 text-white'>
                 <tr>
                   <th className='px-4 py-4 text-left'>
                     <Checkbox
@@ -538,26 +722,147 @@ const AppointmentsPage = () => {
                       }}
                     />
                   </th>
-                  <th className='px-4 py-4 text-left'>ID</th>
-                  <th className='px-4 py-4 text-left'>Customer</th>
-                  <th className='px-4 py-4 text-left'>Contact</th>
-                  <th className='px-4 py-4 text-left'>Vehicle</th>
-                  <th className='px-4 py-4 text-left'>Service</th>
-                  <th className='px-4 py-4 text-left'>Date & Time</th>
-                  <th className='px-4 py-4 text-left'>Handled By</th>
-                  <th className='px-4 py-4 text-center'>Actions</th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>ID</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Customer</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Contact</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Vehicle</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Service</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Date & Time</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Assigned To</p></th>
+                  <th className='px-4 py-4 text-center'><p className='text-white'>Actions</p></th>
                 </tr>
               </thead>
               <tbody>
-                {completedAppointments.map((apt, index) => (
-                  <tr key={apt.id} className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-green-50 transition-colors`}>
+                {inServiceAppointments.map((apt, index) => (
+                  <tr key={apt.id} className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-gray-100 transition-colors`}>
                     <td className='px-4 py-4'>
                       <Checkbox
                         checked={selectedRows.includes(apt.id)}
                         onChange={() => handleSelectRow(apt.id)}
                         onClick={(e) => e.stopPropagation()}
                         sx={{
-                          color: '#78C841',
+                          color: '#000000',
+                          '&.Mui-checked': {
+                            color: '#8b5cf6',
+                          },
+                        }}
+                      />
+                    </td>
+                    <td className='px-4 py-4'>
+                      <span className='text-sm font-medium text-gray-900'>#{apt.id}</span>
+                    </td>
+                    <td className='px-4 py-4'>
+                      <div>
+                        <p className='text-sm font-medium text-gray-900'>{apt.customerName}</p>
+                      </div>
+                    </td>
+                    <td className='px-4 py-4'>
+                      <div>
+                        <p className='text-xs text-gray-600'>{apt.customerEmail}</p>
+                        <p className='text-xs text-gray-600'>{apt.customerPhone}</p>
+                      </div>
+                    </td>
+                    <td className='px-4 py-4'>
+                      <div>
+                        <p className='text-sm font-medium text-gray-900'>{apt.vehicleMake} {apt.vehicleModel}</p>
+                        <p className='text-xs text-gray-500'>{apt.vehiclePlate}</p>
+                      </div>
+                    </td>
+                    <td className='px-4 py-4'>
+                      <span className='text-sm text-gray-900'>{apt.serviceType}</span>
+                    </td>
+                    <td className='px-4 py-4'>
+                      <div>
+                        <p className='text-sm font-medium text-gray-900'>{apt.appointmentDate}</p>
+                        <p className='text-xs text-gray-500'>{apt.appointmentTime}</p>
+                      </div>
+                    </td>
+                    <td className='px-4 py-4'>
+                      <div className='flex items-center gap-2'>
+                        <AssignmentIndIcon className='text-purple-600' fontSize='small' />
+                        <span className='text-sm font-semibold text-purple-700'>
+                          {apt.assignedEmployee || 'Not Assigned'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className='px-4 py-4'>
+                      <div className='flex gap-2 justify-center'>
+                        <Tooltip title="View Details">
+                          <IconButton
+                            onClick={() => handleViewDetails(apt)}
+                            size="small"
+                            sx={{ color: '#6366f1', '&:hover': { backgroundColor: '#e0e7ff' } }}
+                          >
+                            <VisibilityIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Re-assign Employee">
+                          <IconButton
+                            onClick={() => handleAssignEmployee(apt.id)}
+                            size="small"
+                            sx={{ color: '#8b5cf6', '&:hover': { backgroundColor: '#f3e8ff' } }}
+                          >
+                            <AssignmentIndIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {inServiceAppointments.length === 0 && (
+                  <tr>
+                    <td colSpan={9} className='px-6 py-8 text-center text-gray-500'>
+                      No appointments in service found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Completed Appointments */}
+        {tabValue === 3 && (
+          <div className='bg-white rounded-b-lg shadow-md overflow-hidden'>
+            <table className='w-full'>
+              <thead className='bg-gray-800 text-white'>
+                <tr>
+                  <th className='px-4 py-4 text-left'>
+                    <Checkbox
+                      checked={currentAppointments.length > 0 && selectedRows.length === currentAppointments.length}
+                      indeterminate={selectedRows.length > 0 && selectedRows.length < currentAppointments.length}
+                      onChange={handleSelectAll}
+                      sx={{
+                        color: 'white',
+                        '&.Mui-checked': {
+                          color: 'white',
+                        },
+                        '&.MuiCheckbox-indeterminate': {
+                          color: 'white',
+                        },
+                      }}
+                    />
+                  </th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>ID</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Customer</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Contact</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Vehicle</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Service</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Date & Time</p></th>
+                  <th className='px-4 py-4 text-left'><p className='text-white'>Handled By</p></th>
+                  <th className='px-4 py-4 text-center'><p className='text-white'>Actions</p></th>
+                </tr>
+              </thead>
+              <tbody>
+                {completedAppointments.map((apt, index) => (
+                  <tr key={apt.id} className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-gray-100 transition-colors`}>
+                    <td className='px-4 py-4'>
+                      <Checkbox
+                        checked={selectedRows.includes(apt.id)}
+                        onChange={() => handleSelectRow(apt.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        sx={{
+                          color: '#000000',
                           '&.Mui-checked': {
                             color: '#2563eb',
                           },
@@ -628,21 +933,32 @@ const AppointmentsPage = () => {
                 </div>
 
                 <div className='space-y-3'>
-                  {employees.map(emp => (
-                    <button
-                      key={emp.id}
-                      className='w-full p-4 text-left border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all'
-                      onClick={() => {
-                        console.log('Assigned to:', emp.name);
-                        setIsAssignModalOpen(false);
-                      }}
-                    >
-                      <div className='flex items-center gap-3'>
-                        <AssignmentIndIcon className='text-indigo-600' />
-                        <span className='font-semibold text-gray-900'>{emp.name}</span>
-                      </div>
-                    </button>
-                  ))}
+                  {loadingEmployees ? (
+                    <div className='text-center py-4 text-gray-600'>Loading employees...</div>
+                  ) : employees.length === 0 ? (
+                    <div className='text-center py-4 text-gray-600'>No active employees available</div>
+                  ) : (
+                    employees.map(emp => (
+                      <button
+                        key={emp.id}
+                        className='w-full p-4 text-left border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all'
+                        onClick={() => {
+                          const employeeName = `${emp.firstName} ${emp.lastName}`;
+                          handleAssignEmployeeToAppointment(emp.id, employeeName);
+                        }}
+                      >
+                        <div className='flex items-center gap-3'>
+                          <AssignmentIndIcon className='text-indigo-600' />
+                          <div className='flex-1'>
+                            <span className='font-semibold text-gray-900'>{emp.firstName} {emp.lastName}</span>
+                            <div className='text-xs text-gray-500 mt-1'>
+                              {emp.position} - {emp.department}
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    ))
+                  )}
                 </div>
 
                 <button
@@ -655,6 +971,7 @@ const AppointmentsPage = () => {
             </div>
           </>
         )}
+        </div>
       </div>
     </div>
   )

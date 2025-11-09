@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import Navbar from '../components/Navbar';
+import ChatBot from '../components/ChatBot';
 import {
   TextField,
   Button,
@@ -761,6 +762,9 @@ export default function FAQPage() {
           </Typography> */}
         </Box>
       </Modal>
+      
+      {/* ChatBot Component */}
+      <ChatBot />
     </div>
   );
 }

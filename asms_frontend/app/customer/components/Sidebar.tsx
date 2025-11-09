@@ -36,7 +36,7 @@ const Sidebar = ({ activeItem = '' }: SidebarProps) => {
           </li>
           <li 
             onClick={() => router.push('/customer/Request')}
-            className={`cursor-pointer flex text-lg p-2 rounded ${activeItem === 'Request' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
+            className={`cursor-pointer flex text-lg p-2 rounded-l-2xl ${activeItem === 'Request' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
           >
             <BiMessageSquareAdd className='mr-2 text-2xl' />Request
           </li>
@@ -48,7 +48,7 @@ const Sidebar = ({ activeItem = '' }: SidebarProps) => {
           </li>
           <li 
             onClick={() => router.push('/customer/Review')}
-            className={`cursor-pointer flex text-lg p-2 rounded ${activeItem === 'Review' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
+            className={`cursor-pointer flex text-lg p-2 rounded-l-2xl ${activeItem === 'Review' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
           >
             <MdOutlineRateReview className='mr-2 text-2xl' />Review
           </li>

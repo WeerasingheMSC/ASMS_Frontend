@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Sidebar from '../../components/Sidebar'
 import Navbar from '../../components/Navbar'
+import ChatBot from '../../components/ChatBot'
 import { IoArrowBack, IoTimeOutline, IoPricetagOutline, IoCheckmarkCircle } from 'react-icons/io5'
 import { FaTools, FaCalendarAlt } from 'react-icons/fa'
 
@@ -346,6 +347,9 @@ export default function ServiceDetailsPage() {
           </div>
         </div>
       </div>
+      
+      {/* ChatBot Component */}
+      <ChatBot />
     </div>
   )
 }

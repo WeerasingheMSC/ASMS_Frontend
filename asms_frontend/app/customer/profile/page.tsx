@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import Sidebar from '../components/Sidebar'
 import Navbar from '../components/Navbar'
+import ChatBot from '../components/ChatBot'
 import { IoMdClose } from "react-icons/io"
 import CloudUploadIcon from '@mui/icons-material/CloudUpload'
 import { FaUserCircle } from 'react-icons/fa'
@@ -428,6 +429,9 @@ const CustomerProfilePage = () => {
           </div>
         </div>
       </div>
+      
+      {/* ChatBot Component */}
+      <ChatBot />
     </div>
   );
 };

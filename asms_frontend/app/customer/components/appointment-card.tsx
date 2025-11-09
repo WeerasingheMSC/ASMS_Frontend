@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react"
 import { Card } from "../components/ui/card"
 import { Button } from "../components/ui/button"
-import { Calendar, Clock, Wrench, Star, Trash2, Edit } from "lucide-react"
+import { Calendar, Clock, Wrench, Star, Trash2, Edit, Edit2 } from "lucide-react"
 import ReviewModal from "../components/review-modal"
 import { reviewAPI } from "../../lib/reviewsApi"
+import { changeRequestAPI } from "../../lib/changeRequestApi"
 
 interface AppointmentCardProps {
   appointment: any
@@ -16,6 +17,7 @@ interface AppointmentCardProps {
   onEditReview: (appointmentId: string, rating: string, comment: string) => void
   onDeleteReview: (appointmentId: string) => void
   onCancel: (appointmentId: string) => void
+  onEdit?: (appointmentId: string) => void
 }
 
 const STATUS_CONFIG = {
@@ -37,11 +39,14 @@ export default function AppointmentCard({
   onEditReview,
   onDeleteReview,
   onCancel,
+  onEdit,
 }: AppointmentCardProps) {
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [showReviewActions, setShowReviewActions] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [reviewId, setReviewId] = useState<number | null>(null)
+  const [canEditAppointment, setCanEditAppointment] = useState(false)
+  const [checkingEditPermission, setCheckingEditPermission] = useState(false)
   const config = STATUS_CONFIG[appointment.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.PENDING
   const appointmentDate = new Date(appointment.date)
   const dateStr = appointmentDate.toLocaleDateString("en-US", {
@@ -49,6 +54,30 @@ export default function AppointmentCard({
     day: "numeric",
     year: "numeric",
   })
+
+  // Check if appointment can be edited (has approved change request)
+  useEffect(() => {
+    checkEditPermission()
+  }, [appointment.id])
+
+  const checkEditPermission = async () => {
+    // Only check for PENDING or CONFIRMED appointments
+    if (!['PENDING', 'CONFIRMED'].includes(appointment.status)) {
+      setCanEditAppointment(false)
+      return
+    }
+
+    try {
+      setCheckingEditPermission(true)
+      const result = await changeRequestAPI.canEditAppointment(Number(appointment.id))
+      setCanEditAppointment(result.canEdit)
+    } catch (error) {
+      console.error('Error checking edit permission:', error)
+      setCanEditAppointment(false)
+    } finally {
+      setCheckingEditPermission(false)
+    }
+  }
 
   const fetchReviewData = async () => {
   const token = getToken()
@@ -239,8 +268,20 @@ const getToken = (): string | null => {
         
         {/* Action Buttons - Bottom Right Corner */}
         <div className="flex justify-end space-x-2 pt-4 ">
+          {/* Edit Appointment Button - if has approved change request */}
+          {canEditAppointment && (appointment.status === 'PENDING' || appointment.status === 'CONFIRMED') && (
+            <Button
+              onClick={() => onEdit && onEdit(appointment.id)}
+              className="bg-blue-600 text-white hover:bg-blue-700 border-blue-600"
+              size="sm"
+            >
+              <Edit2 className="w-4 h-4 mr-1" />
+              Edit Appointment
+            </Button>
+          )}
+
           {/* Cancel Button - only if pending */}
-          {appointment.status === "pending" && (
+          {appointment.status === "PENDING" && (
             <Button
               onClick={() => onCancel(appointment.id)}
               variant="outline"

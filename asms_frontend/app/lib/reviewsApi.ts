@@ -160,7 +160,7 @@ export const reviewAPI = {
   getReviewByAppointment: async (appointmentId: number, token: string) => {
     console.log("[v0] getReviewByAppointment:", appointmentId)
     try {
-      const response = await api.get(`/customer/reviews/${appointmentId}`, {
+      const response = await api.get(`/customer/reviews/appointment/${appointmentId}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       console.log("[v0] getReviewByAppointmentWithId: SUCCESS - Review ID:", response.data?.id);
@@ -171,6 +171,21 @@ export const reviewAPI = {
         return null
       }
       console.error("[v0] getReviewByAppointmentWithId: FAILED", error?.response?.status);
+      throw error
+    }
+  },
+  
+  // Get all reviews (public - for all customers to see)
+  getAllReviews: async (token: string) => {
+    console.log("[v0] getAllReviews: Fetching all public reviews")
+    try {
+      const response = await api.get("/customer/reviews/all", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      console.log("[v0] getAllReviews: SUCCESS - Total reviews:", response.data?.length)
+      return response.data
+    } catch (error: any) {
+      console.error("[v0] getAllReviews: FAILED", error?.response?.status)
       throw error
     }
   },

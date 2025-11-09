@@ -46,7 +46,7 @@ class NotificationWebSocketService {
     // Get authentication token
     const token = this.getAuthToken();
     if (!token) {
-      console.error('❌ No authentication token found. Cannot connect to WebSocket.');
+      // Silently fail - user is not logged in yet
       this.isConnecting = false;
       return;
     }
@@ -77,7 +77,11 @@ class NotificationWebSocketService {
           console.log('✅ WebSocket Connected Successfully');
           this.isConnecting = false;
           this.reconnectAttempts = 0;
-          this.subscribeToNotifications(onNotification);
+          
+          // Add a small delay to ensure the connection is fully established
+          setTimeout(() => {
+            this.subscribeToNotifications(onNotification);
+          }, 100);
         },
 
         onStompError: (frame) => {
@@ -112,21 +116,27 @@ class NotificationWebSocketService {
    */
   private getAuthToken(): string | null {
     if (typeof window !== 'undefined') {
-      let token = localStorage.getItem('authToken');
-      
-      if (!token) {
-        const userStr = localStorage.getItem('user');
-        if (userStr) {
-          try {
-            const user = JSON.parse(userStr);
-            token = user.token || user.jwt || user.accessToken || null;
-          } catch (e) {
-            console.error('Error parsing user data:', e);
-          }
+      try {
+        const userData = localStorage.getItem('user');
+        
+        if (!userData) {
+          // Don't log error - user might not be logged in yet
+          return null;
         }
+
+        const user = JSON.parse(userData);
+        
+        if (!user.token) {
+          console.warn('⚠️ No token found in user object');
+          return null;
+        }
+
+        console.log('✅ Auth token retrieved for WebSocket');
+        return user.token;
+      } catch (error) {
+        console.error('❌ Error getting auth token:', error);
+        return null;
       }
-      
-      return token;
     }
     return null;
   }
@@ -135,8 +145,21 @@ class NotificationWebSocketService {
    * Subscribe to notification topics based on user role
    */
   private subscribeToNotifications(onNotification: NotificationCallback): void {
-    if (!this.client || !this.client.connected) {
-      console.error('Cannot subscribe: WebSocket not connected');
+    if (!this.client) {
+      console.error('Cannot subscribe: WebSocket client not initialized');
+      return;
+    }
+
+    if (!this.client.connected) {
+      console.warn('WebSocket not connected yet, waiting for connection...');
+      // Wait for connection and retry
+      setTimeout(() => {
+        if (this.client?.connected) {
+          this.subscribeToNotifications(onNotification);
+        } else {
+          console.error('Cannot subscribe: WebSocket connection timeout');
+        }
+      }, 500);
       return;
     }
 
@@ -148,32 +171,41 @@ class NotificationWebSocketService {
     // Subscribe to user-specific topic
     const userTopic = `/topic/notifications/user.${this.userId}`;
     
-    console.log(`Subscribing to topic: ${userTopic}`);
+    console.log(`📡 Subscribing to topic: ${userTopic}`);
+    console.log(`👤 User Role: ${this.userRole}`);
 
-    this.subscription = this.client.subscribe(userTopic, (message) => {
-      try {
-        const notification: WebSocketNotificationMessage = JSON.parse(message.body);
-        console.log('Received notification:', notification);
-        onNotification(notification);
-      } catch (error) {
-        console.error('Error parsing notification message:', error);
-      }
-    });
-
-    // For admins, also subscribe to general admin topic
-    if (this.userRole === 'ADMIN') {
-      const adminTopic = '/topic/notifications/admin';
-      console.log(`Subscribing to admin topic: ${adminTopic}`);
-      
-      this.client.subscribe(adminTopic, (message) => {
+    try {
+      this.subscription = this.client.subscribe(userTopic, (message) => {
         try {
           const notification: WebSocketNotificationMessage = JSON.parse(message.body);
-          console.log('Received admin notification:', notification);
+          console.log('📩 Received notification:', notification);
           onNotification(notification);
         } catch (error) {
-          console.error('Error parsing admin notification message:', error);
+          console.error('❌ Error parsing notification message:', error);
         }
       });
+
+      console.log(`✅ Successfully subscribed to ${userTopic}`);
+
+      // For admins, also subscribe to general admin topic
+      if (this.userRole === 'ADMIN') {
+        const adminTopic = '/topic/notifications/admin';
+        console.log(`📡 Subscribing to admin topic: ${adminTopic}`);
+        
+        this.client.subscribe(adminTopic, (message) => {
+          try {
+            const notification: WebSocketNotificationMessage = JSON.parse(message.body);
+            console.log('📩 Received admin notification:', notification);
+            onNotification(notification);
+          } catch (error) {
+            console.error('❌ Error parsing admin notification message:', error);
+          }
+        });
+
+        console.log(`✅ Successfully subscribed to ${adminTopic}`);
+      }
+    } catch (error) {
+      console.error('❌ Error subscribing to notifications:', error);
     }
   }
 

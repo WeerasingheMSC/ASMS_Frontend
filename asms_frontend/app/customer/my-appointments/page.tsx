@@ -2,13 +2,14 @@
 
 import Sidebar from "../components/Sidebar"
 import Navbar from "../components/Navbar"
+import ChatBot from "../components/ChatBot"
 import { useState, useEffect } from "react"
 import { Button } from "../components/ui/button"  
 import { Card } from "../components/ui/card"
-import { Plus, Search } from "lucide-react"
+import { Plus, Search, Calendar, Clock } from "lucide-react"
 import AppointmentCard from "../components/appointment-card"
 import BookingWizard from "../components/booking-wizard"
-import { getCustomerAppointments, AppointmentResponse, cancelAppointment } from "../../lib/appointmentsApi"
+import { getCustomerAppointments, AppointmentResponse, cancelAppointment, updateAppointment } from "../../lib/appointmentsApi"
 
 export default function MyAppointments() {
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([])
@@ -17,6 +18,8 @@ export default function MyAppointments() {
   const [showWizard, setShowWizard] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState<string | null>(null)
+  const [editingAppointment, setEditingAppointment] = useState<AppointmentResponse | null>(null)
+  const [showEditModal, setShowEditModal] = useState(false)
 
   useEffect(() => {
     fetchAppointments()
@@ -67,6 +70,14 @@ export default function MyAppointments() {
     
     return matchesSearch && matchesStatus
   })
+
+  const handleEditAppointment = (appointmentId: string) => {
+    const appointment = appointments.find(apt => apt.id === Number(appointmentId))
+    if (appointment) {
+      setEditingAppointment(appointment)
+      setShowEditModal(true)
+    }
+  }
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -362,6 +373,7 @@ export default function MyAppointments() {
                         alert("Failed to cancel appointment. Please try again.")
                       }
                     }}
+                    onEdit={handleEditAppointment}
                   />
                 ))}
               </div>
@@ -381,6 +393,312 @@ export default function MyAppointments() {
             />
           </div>
         </div>
+      )}
+
+      {/* Edit Appointment Modal */}
+      {showEditModal && editingAppointment && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+            <EditAppointmentModal
+              appointment={editingAppointment}
+              onClose={() => {
+                setShowEditModal(false)
+                setEditingAppointment(null)
+              }}
+              onUpdate={async (newDate: string, newTime: string, serviceCategory?: string, serviceType?: string, notes?: string) => {
+                try {
+                  await updateAppointment(editingAppointment.id, newDate, newTime, serviceCategory, serviceType, notes)
+                  alert('Appointment updated successfully!')
+                  setShowEditModal(false)
+                  setEditingAppointment(null)
+                  fetchAppointments()
+                } catch (error: any) {
+                  alert(error.message || 'Failed to update appointment')
+                }
+              }}
+            />
+          </div>
+        </div>
+      )}
+      
+      {/* ChatBot Component */}
+      <ChatBot />
+    </div>
+  )
+}
+
+// Edit Appointment Modal Component
+function EditAppointmentModal({ 
+  appointment, 
+  onClose, 
+  onUpdate 
+}: { 
+  appointment: AppointmentResponse
+  onClose: () => void
+  onUpdate: (newDate: string, newTime: string, serviceCategory?: string, serviceType?: string, notes?: string) => void
+}) {
+  const [newDate, setNewDate] = useState(appointment.appointmentDate.split('T')[0])
+  const [newTime, setNewTime] = useState(appointment.timeSlot)
+  const [serviceCategory, setServiceCategory] = useState(appointment.serviceCategory)
+  const [serviceType, setServiceType] = useState(appointment.serviceType)
+  const [additionalNotes, setAdditionalNotes] = useState(appointment.additionalRequirements || '')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  // Service data from backend
+  const [services, setServices] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [categories, setCategories] = useState<string[]>([])
+  const [servicesByCategory, setServicesByCategory] = useState<Record<string, any[]>>({})
+
+  // Fetch services from backend
+  useEffect(() => {
+    fetchServices()
+  }, [])
+
+  const fetchServices = async () => {
+    try {
+      setLoading(true)
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+      const response = await fetch(`${API_URL}/api/customer/services`)
+
+      if (response.ok) {
+        const servicesData = await response.json()
+        console.log('Fetched services:', servicesData)
+
+        // Filter active services
+        const activeServices = servicesData.filter(
+          (service: any) => service.isActive
+        )
+
+        setServices(activeServices)
+
+        // Extract unique categories
+        const uniqueCategories = [...new Set(activeServices.map((service: any) => service.category))] as string[]
+        setCategories(uniqueCategories)
+
+        // Group services by category
+        const grouped = activeServices.reduce((acc: any, service: any) => {
+          if (!acc[service.category]) {
+            acc[service.category] = []
+          }
+          acc[service.category].push(service)
+          return acc
+        }, {})
+        setServicesByCategory(grouped)
+      } else {
+        console.error('Failed to fetch services:', response.status)
+      }
+    } catch (error) {
+      console.error('Error fetching services:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!newDate || !newTime) {
+      alert('Please select both date and time')
+      return
+    }
+
+    if (!serviceCategory || !serviceType) {
+      alert('Please select service category and type')
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      await onUpdate(newDate, newTime, serviceCategory, serviceType, additionalNotes)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // Generate time slots
+  const timeSlots = []
+  for (let hour = 8; hour <= 17; hour++) {
+    for (let minute = 0; minute < 60; minute += 30) {
+      const ampm = hour >= 12 ? 'PM' : 'AM'
+      const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour
+      const displayMinute = minute.toString().padStart(2, '0')
+      timeSlots.push(`${displayHour}:${displayMinute} ${ampm}`)
+    }
+  }
+
+  const availableServiceTypes = servicesByCategory[serviceCategory] || []
+
+  return (
+    <div className="p-8">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-800">Edit Appointment</h2>
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-600 transition-colors"
+          disabled={isSubmitting}
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      
+      <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <h3 className="font-semibold text-gray-800 mb-2">Current Appointment Details</h3>
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <div>
+            <span className="text-gray-600">Date:</span>
+            <span className="ml-2 font-medium text-gray-800">{appointment.appointmentDate.split('T')[0]}</span>
+          </div>
+          <div>
+            <span className="text-gray-600">Time:</span>
+            <span className="ml-2 font-medium text-gray-800">{appointment.timeSlot}</span>
+          </div>
+          <div>
+            <span className="text-gray-600">Service:</span>
+            <span className="ml-2 font-medium text-gray-800">{appointment.serviceType}</span>
+          </div>
+          <div>
+            <span className="text-gray-600">Vehicle:</span>
+            <span className="ml-2 font-medium text-gray-800">{appointment.vehicleBrand} {appointment.model}</span>
+          </div>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-gray-600">Loading services...</div>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-5 mb-6">
+            {/* Date Selection */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <Calendar className="w-4 h-4 inline mr-1" />
+                New Date
+              </label>
+              <input
+                type="date"
+                value={newDate}
+                onChange={(e) => setNewDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
+
+            {/* Time Selection */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <Clock className="w-4 h-4 inline mr-1" />
+                New Time
+              </label>
+              <select
+                value={newTime}
+                onChange={(e) => setNewTime(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              >
+                <option value="">Select a time</option>
+                {timeSlots.map(slot => (
+                  <option key={slot} value={slot}>{slot}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Service Category */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                </svg>
+                Service Category
+              </label>
+              {categories.length === 0 ? (
+                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-yellow-800 text-sm">No service categories available.</p>
+                </div>
+              ) : (
+                <select
+                  value={serviceCategory}
+                  onChange={(e) => {
+                    setServiceCategory(e.target.value)
+                    setServiceType('') // Reset service type when category changes
+                  }}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Select a category</option>
+                  {categories.map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {/* Service Type */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Service Type
+              </label>
+              <select
+                value={serviceType}
+                onChange={(e) => setServiceType(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+                disabled={!serviceCategory || availableServiceTypes.length === 0}
+              >
+                <option value="">Select a service</option>
+                {availableServiceTypes.map((service) => (
+                  <option key={service.id} value={service.serviceName}>
+                    {service.serviceName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Additional Notes */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                </svg>
+                Additional Notes (Optional)
+              </label>
+              <textarea
+                value={additionalNotes}
+                onChange={(e) => setAdditionalNotes(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px] resize-y"
+                placeholder="Any special requirements or notes about your vehicle..."
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+              disabled={isSubmitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-blue-300"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Updating...' : 'Update Appointment'}
+            </button>
+          </div>
+        </form>
       )}
     </div>
   )

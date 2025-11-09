@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from './components/Sidebar'
 import Navbar from './components/Navbar'
+import ChatBot from './components/ChatBot'
 import { getCustomerAppointments, AppointmentResponse } from '../lib/appointmentsApi'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
@@ -347,6 +348,9 @@ export default function CustomerDashboard() {
         )}
 
       </div>
+      
+      {/* ChatBot Component */}
+      <ChatBot />
       </div>
     </div>
   )

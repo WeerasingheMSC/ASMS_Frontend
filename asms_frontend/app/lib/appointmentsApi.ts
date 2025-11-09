@@ -377,6 +377,61 @@ export async function cancelAppointment(appointmentId: number): Promise<any> {
   }
 }
 
+// Customer: Update appointment (date/time/service/notes - when approved change request exists)
+export async function updateAppointment(
+  appointmentId: number, 
+  newDate: string, 
+  newTime: string,
+  serviceCategory?: string,
+  serviceType?: string,
+  additionalRequirements?: string
+): Promise<AppointmentResponse> {
+  try {
+    const api = createAuthenticatedRequest();
+    
+    // Validate formats
+    const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+    const timePattern = /^\d{1,2}:\d{2}\s?(AM|PM)$/i;
+    
+    if (!datePattern.test(newDate)) {
+      throw new Error('Invalid date format. Expected YYYY-MM-DD');
+    }
+    
+    if (!timePattern.test(newTime)) {
+      throw new Error('Invalid time format. Expected HH:MM AM/PM');
+    }
+    
+    // Create combined datetime
+    const combinedDateTime = `${newDate}T${convertTo24Hour(newTime)}:00`;
+    
+    const updateData: any = {
+      appointmentDate: combinedDateTime,
+      timeSlot: newTime
+    };
+
+    // Add optional fields if provided
+    if (serviceCategory) updateData.serviceCategory = serviceCategory;
+    if (serviceType) updateData.serviceType = serviceType;
+    if (additionalRequirements !== undefined) updateData.additionalRequirements = additionalRequirements;
+    
+    console.log('Updating appointment with:', updateData);
+    const response = await api.put(`/api/customer/appointments/${appointmentId}/update`, updateData);
+    console.log('Appointment updated:', response.data);
+    return response.data as AppointmentResponse;
+  } catch (error) {
+    console.error('Error updating appointment:', error);
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 401) {
+        localStorage.removeItem('user');
+        throw new Error('Session expired. Please sign in again.');
+      } else if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+    }
+    throw new Error('Failed to update appointment.');
+  }
+}
+
 // Admin: Assign employee to appointment (change status to IN_SERVICE)
 export async function assignEmployeeToAppointment(appointmentId: number, employeeId: number): Promise<AppointmentResponse> {
   try {

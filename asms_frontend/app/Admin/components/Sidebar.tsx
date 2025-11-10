@@ -54,10 +54,10 @@ const Sidebar = ({ activeItem = '' }: SidebarProps) => {
             <HiOutlineUserGroup className='mr-2 text-2xl' />Customers
           </li>
           <li 
-            onClick={() => router.push('/Admin/Settings')}
+            onClick={() => router.push('/Admin/FAQManagement')}
             className={`cursor-pointer flex text-lg p-2 rounded ${activeItem === 'Settings' ? 'bg-white text-black' : 'hover:bg-white hover:text-black'}`}
           >
-            <IoSettingsOutline className='mr-2 text-2xl' />Settings
+            <IoSettingsOutline className='mr-2 text-2xl' />Faq Management
           </li>
         </ul>
       </div>

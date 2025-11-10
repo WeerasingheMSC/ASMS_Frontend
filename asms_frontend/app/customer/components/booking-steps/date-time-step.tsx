@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card } from "../../components/ui/card"
 import { Button } from "../../components/ui/button"
 import { ChevronLeft, ChevronRight } from "lucide-react"
@@ -26,13 +26,47 @@ const TIME_SLOTS = [
   "04:30 PM",
 ]
 
-// Mock booked slots
-const BOOKED_SLOTS = ["09:00 AM", "02:30 PM", "03:00 PM"]
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 export default function DateTimeStep({ data, onNext, onBack }: DateTimeStepProps) {
   const [formData, setFormData] = useState(data)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [bookedSlots, setBookedSlots] = useState<string[]>([])
+  const [loadingSlots, setLoadingSlots] = useState(false)
+
+  // Fetch booked slots when date changes
+  useEffect(() => {
+    if (formData.date) {
+      fetchBookedSlots(formData.date)
+    }
+  }, [formData.date])
+
+  const fetchBookedSlots = async (date: string) => {
+    setLoadingSlots(true)
+    try {
+      const url = `${API_URL}/api/customer/appointments/booked-slots?date=${date}`
+      console.log('Fetching booked slots from:', url)
+      
+      const response = await fetch(url)
+      console.log('Response status:', response.status)
+      
+      if (response.ok) {
+        const slots = await response.json()
+        console.log('Booked slots:', slots)
+        setBookedSlots(slots)
+      } else {
+        const errorText = await response.text()
+        console.error('Failed to fetch booked slots. Status:', response.status, 'Error:', errorText)
+        setBookedSlots([])
+      }
+    } catch (error) {
+      console.error('Error fetching booked slots:', error)
+      setBookedSlots([])
+    } finally {
+      setLoadingSlots(false)
+    }
+  }
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -154,27 +188,35 @@ const isSelected = (day: number) => {
         {/* Time Slots */}
         <div>
           <h3 className="font-semibold text-black mb-4">Available Time Slots</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {TIME_SLOTS.map((slot) => {
-              const isBooked = BOOKED_SLOTS.includes(slot)
-              return (
-                <button
-                  key={slot}
-                  onClick={() => !isBooked && handleTimeSelect(slot)}
-                  disabled={isBooked}
-                  className={`p-3 rounded-lg font-medium transition-colors ${
-                    isBooked
-                      ? "bg-red-100 text-red-700 cursor-not-allowed opacity-50"
-                      : formData.time === slot
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-100 text-black hover:bg-gray-200"
-                  }`}
-                >
-                  {slot}
-                </button>
-              )
-            })}
-          </div>
+          {!formData.date ? (
+            <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg">
+              Please select a date first
+            </div>
+          ) : loadingSlots ? (
+            <div className="text-center py-8 text-gray-500">Loading available slots...</div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {TIME_SLOTS.map((slot) => {
+                const isBooked = bookedSlots.includes(slot)
+                return (
+                  <button
+                    key={slot}
+                    onClick={() => !isBooked && handleTimeSelect(slot)}
+                    disabled={isBooked}
+                    className={`p-3 rounded-lg font-medium transition-colors ${
+                      isBooked
+                        ? "bg-red-100 text-red-700 cursor-not-allowed opacity-50"
+                        : formData.time === slot
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-100 text-black hover:bg-gray-200"
+                    }`}
+                  >
+                    {slot}
+                  </button>
+                )
+              })}
+            </div>
+          )}
           {errors.time && <p className="text-red-600 text-sm mt-2">{errors.time}</p>}
 
           {/* Legend */}

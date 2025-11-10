@@ -475,9 +475,8 @@ const ServicesPage = () => {
     const colors: { [key: string]: string } = {
       'Maintenance': 'bg-blue-100 text-blue-800',
       'Repair': 'bg-orange-100 text-orange-800',
-      'Modification': 'bg-purple-100 text-purple-800',
       'Inspection': 'bg-teal-100 text-teal-800',
-      'Cleaning': 'bg-cyan-100 text-cyan-800',
+      'Detailing': 'bg-purple-100 text-purple-800',
     };
     return colors[category] || 'bg-gray-100 text-gray-800';
   };
@@ -744,9 +743,8 @@ const ServicesPage = () => {
                       >
                         <option value='Maintenance'>Maintenance</option>
                         <option value='Repair'>Repair</option>
-                        <option value='Modification'>Modification</option>
                         <option value='Inspection'>Inspection</option>
-                        <option value='Cleaning'>Cleaning</option>
+                        <option value='Detailing'>Detailing</option>
                       </select>
                     </div>
 
@@ -936,9 +934,8 @@ const ServicesPage = () => {
                       >
                         <option value='Maintenance'>Maintenance</option>
                         <option value='Repair'>Repair</option>
-                        <option value='Modification'>Modification</option>
                         <option value='Inspection'>Inspection</option>
-                        <option value='Cleaning'>Cleaning</option>
+                        <option value='Detailing'>Detailing</option>
                       </select>
                     </div>
 

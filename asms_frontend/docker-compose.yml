@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: asms-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      # Backend API URL
+      - NEXT_PUBLIC_API_URL=http://localhost:8080
+      
+      # Application settings
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+      
+    networks:
+      - asms-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); });"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+networks:
+  asms-network:
+    external: true
+    name: asms_backend_asms-network

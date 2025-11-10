@@ -47,17 +47,29 @@ const DashboardPage = () => {
     completedAppointments: 0
   })
 
-  const [recentActivities, setRecentActivities] = useState([
-    { id: 1, type: 'appointment', message: 'New appointment booking from John Doe', time: '5 min ago', status: 'pending' },
-    { id: 2, type: 'customer', message: 'New customer registered: Jane Smith', time: '15 min ago', status: 'success' },
-    { id: 3, type: 'service', message: 'Oil Change service completed for customer ABC-1234', time: '30 min ago', status: 'completed' },
-    { id: 4, type: 'employee', message: 'Employee Mike Johnson completed 3 services today', time: '1 hour ago', status: 'info' },
-    { id: 5, type: 'appointment', message: 'Appointment approved for Robert Brown', time: '2 hours ago', status: 'approved' }
-  ])
+  const [recentActivities, setRecentActivities] = useState<any[]>([])
 
   useEffect(() => {
     fetchDashboardData()
   }, [])
+
+  const getTimeAgo = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+    
+    if (seconds < 60) return 'Just now'
+    const minutes = Math.floor(seconds / 60)
+    if (minutes < 60) return `${minutes} min ago`
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`
+    const days = Math.floor(hours / 24)
+    if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`
+    const weeks = Math.floor(days / 7)
+    if (weeks < 4) return `${weeks} week${weeks > 1 ? 's' : ''} ago`
+    const months = Math.floor(days / 30)
+    return `${months} month${months > 1 ? 's' : ''} ago`
+  }
 
   const fetchDashboardData = async () => {
     try {
@@ -68,6 +80,13 @@ const DashboardPage = () => {
       }
 
       const user = JSON.parse(userData)
+
+      // Fetch appointments data
+      const appointmentsResponse = await fetch(`${API_URL}/api/admin/appointments`, {
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      })
 
       // Fetch services data
       const servicesResponse = await fetch(`${API_URL}/api/admin/services`, {
@@ -90,9 +109,14 @@ const DashboardPage = () => {
         }
       })
 
+      let appointmentsData = []
       let servicesData = []
       let employeesData = []
       let customersData = []
+
+      if (appointmentsResponse.ok) {
+        appointmentsData = await appointmentsResponse.json()
+      }
 
       if (servicesResponse.ok) {
         servicesData = await servicesResponse.json()
@@ -120,27 +144,148 @@ const DashboardPage = () => {
         return createdDate.getMonth() === currentMonth && createdDate.getFullYear() === currentYear
       }).length
 
-      // Mock appointment data (replace with actual API when available)
-      const mockAppointments = {
-        total: 156,
-        monthly: 42,
-        pending: 12,
-        approved: 18,
-        completed: 12
-      }
+      // Calculate appointment statistics from real data
+      const monthlyAppointments = appointmentsData.filter((a: any) => {
+        const createdDate = new Date(a.createdAt || a.appointmentDate)
+        return createdDate.getMonth() === currentMonth && createdDate.getFullYear() === currentYear
+      }).length
+
+      const pendingAppointments = appointmentsData.filter((a: any) => 
+        a.status === 'PENDING' || a.status === 'Pending'
+      ).length
+
+      const approvedAppointments = appointmentsData.filter((a: any) => 
+        a.status === 'APPROVED' || a.status === 'Approved' || a.status === 'CONFIRMED' || a.status === 'Confirmed' || a.status === 'IN_SERVICE' || a.status === 'In Service'
+      ).length
+
+      const completedAppointments = appointmentsData.filter((a: any) => 
+        a.status === 'COMPLETED' || a.status === 'Completed' || a.status === 'READY' || a.status === 'Ready'
+      ).length
+
+      // Generate recent activities from real data
+      const activities: any[] = []
+
+      // Add recent appointments with timestamps
+      const sortedAppointments = [...appointmentsData].sort((a: any, b: any) => {
+        const dateA = new Date(a.createdAt || a.appointmentDate).getTime()
+        const dateB = new Date(b.createdAt || b.appointmentDate).getTime()
+        return dateB - dateA
+      }).slice(0, 3)
+
+      sortedAppointments.forEach((appointment: any) => {
+        const timestamp = new Date(appointment.createdAt || appointment.appointmentDate).getTime()
+        const timeAgo = getTimeAgo(appointment.createdAt || appointment.appointmentDate)
+        const customerName = appointment.customerName || appointment.customer?.username || 'Customer'
+        const status = appointment.status?.toLowerCase() || 'pending'
+        
+        let message = ''
+        let activityStatus = ''
+        
+        if (status === 'pending') {
+          message = `New appointment booking from ${customerName}`
+          activityStatus = 'pending'
+        } else if (status === 'approved' || status === 'confirmed') {
+          message = `Appointment approved for ${customerName}`
+          activityStatus = 'approved'
+        } else if (status === 'completed' || status === 'ready') {
+          message = `Service completed for ${customerName} - ${appointment.serviceCategory || 'Service'}`
+          activityStatus = 'completed'
+        } else if (status === 'in_service' || status === 'in service') {
+          message = `Service in progress for ${customerName}`
+          activityStatus = 'info'
+        }
+        
+        activities.push({
+          id: `apt-${appointment.id}`,
+          type: 'appointment',
+          message,
+          time: timeAgo,
+          status: activityStatus,
+          timestamp
+        })
+      })
+
+      // Add recent customers with timestamps
+      const sortedCustomers = [...customersData].sort((a: any, b: any) => {
+        const dateA = new Date(a.createdAt).getTime()
+        const dateB = new Date(b.createdAt).getTime()
+        return dateB - dateA
+      }).slice(0, 2)
+
+      sortedCustomers.forEach((customer: any) => {
+        const timestamp = new Date(customer.createdAt).getTime()
+        const timeAgo = getTimeAgo(customer.createdAt)
+        activities.push({
+          id: `cust-${customer.id}`,
+          type: 'customer',
+          message: `New customer registered: ${customer.firstName || customer.username || 'User'} ${customer.lastName || ''}`.trim(),
+          time: timeAgo,
+          status: 'success',
+          timestamp
+        })
+      })
+
+      // Add recent employees with timestamps
+      const sortedEmployees = [...employeesData].sort((a: any, b: any) => {
+        const dateA = new Date(a.createdAt).getTime()
+        const dateB = new Date(b.createdAt).getTime()
+        return dateB - dateA
+      }).slice(0, 2)
+
+      sortedEmployees.forEach((employee: any) => {
+        const timestamp = new Date(employee.createdAt).getTime()
+        const timeAgo = getTimeAgo(employee.createdAt)
+        activities.push({
+          id: `emp-${employee.id}`,
+          type: 'employee',
+          message: `New employee added: ${employee.firstName || employee.username || 'Employee'} ${employee.lastName || ''}`.trim(),
+          time: timeAgo,
+          status: 'info',
+          timestamp
+        })
+      })
+
+      // Add recent services with timestamps
+      const sortedServices = [...servicesData].sort((a: any, b: any) => {
+        const dateA = new Date(a.createdAt).getTime()
+        const dateB = new Date(b.createdAt).getTime()
+        return dateB - dateA
+      }).slice(0, 2)
+
+      sortedServices.forEach((service: any) => {
+        const timestamp = new Date(service.createdAt).getTime()
+        const timeAgo = getTimeAgo(service.createdAt)
+        const status = service.isActive ? 'success' : 'warning'
+        const activeStatus = service.isActive ? 'activated' : 'deactivated'
+        activities.push({
+          id: `srv-${service.id}`,
+          type: 'service',
+          message: `New service ${activeStatus}: ${service.serviceName} (${service.category})`,
+          time: timeAgo,
+          status: status,
+          timestamp
+        })
+      })
+
+      // Sort all activities by timestamp (most recent first)
+      const sortedActivities = activities.sort((a, b) => {
+        return b.timestamp - a.timestamp
+      }).slice(0, 10) // Limit to 10 most recent
+
+      setRecentActivities(sortedActivities)
 
       setStats({
-        totalAppointments: mockAppointments.total,
-        monthlyAppointments: mockAppointments.monthly,
+        totalAppointments: appointmentsData.length,
+        monthlyAppointments: monthlyAppointments,
         totalCustomers: customersData.length,
         monthlyNewCustomers: monthlyNewCustomers,
         totalServices: servicesData.length,
         activeServices: activeServices,
         totalEmployees: employeesData.length,
         activeEmployees: activeEmployees,
-        pendingAppointments: mockAppointments.pending,
-        approvedAppointments: mockAppointments.approved,
-        completedAppointments: mockAppointments.completed
+        pendingAppointments: pendingAppointments,
+        approvedAppointments: approvedAppointments,
+        completedAppointments: completedAppointments
       })
 
       setLoading(false)

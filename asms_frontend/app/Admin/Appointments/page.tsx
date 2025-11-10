@@ -10,9 +10,12 @@ import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import CancelIcon from '@mui/icons-material/Cancel';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import { FaCheck, FaTimes, FaUser, FaCar, FaCalendarAlt, FaClock } from 'react-icons/fa';
+import { MdPending } from 'react-icons/md';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { getAllAppointments, approveAppointment, rejectAppointment, assignEmployeeToAppointment, AppointmentResponse } from '../../lib/appointmentsApi';
+import { changeRequestAPI } from '@/app/lib/changeRequestApi';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -46,8 +49,27 @@ interface Employee {
   isActive: boolean;
 }
 
+interface ChangeRequest {
+  id: number
+  appointmentId: number
+  customerId: number
+  customerName: string
+  customerEmail: string
+  reason: string
+  status: string
+  adminResponse: string | null
+  requestedAt: string
+  respondedAt: string | null
+  serviceType: string
+  appointmentDate: string
+  timeSlot: string
+  vehicleBrand: string
+  vehicleModel: string
+}
+
 const AppointmentsPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [mainView, setMainView] = useState<'appointments' | 'change-requests'>('appointments');
   const [tabValue, setTabValue] = useState(0);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
@@ -57,6 +79,17 @@ const AppointmentsPage = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loadingAppointments, setLoadingAppointments] = useState(true);
   const [error, setError] = useState('');
+  
+  // Change Request states
+  const [changeRequests, setChangeRequests] = useState<ChangeRequest[]>([])
+  const [changeRequestFilter, setChangeRequestFilter] = useState<'all' | 'pending'>('pending')
+  const [loadingChangeRequests, setLoadingChangeRequests] = useState(true)
+  const [selectedChangeRequest, setSelectedChangeRequest] = useState<ChangeRequest | null>(null)
+  const [showResponseModal, setShowResponseModal] = useState(false)
+  const [responseType, setResponseType] = useState<'approve' | 'reject'>('approve')
+  const [adminResponse, setAdminResponse] = useState('')
+  const [changeRequestError, setChangeRequestError] = useState('')
+  const [changeRequestSuccess, setChangeRequestSuccess] = useState('')
 
   // Fetch appointments from backend
   useEffect(() => {
@@ -67,6 +100,96 @@ const AppointmentsPage = () => {
   useEffect(() => {
     fetchEmployees();
   }, []);
+
+  // Fetch change requests when view changes
+  useEffect(() => {
+    if (mainView === 'change-requests') {
+      fetchChangeRequests();
+    }
+  }, [mainView, changeRequestFilter]);
+
+  const fetchChangeRequests = async () => {
+    try {
+      setLoadingChangeRequests(true)
+      const data = changeRequestFilter === 'pending' 
+        ? await changeRequestAPI.getPendingRequests()
+        : await changeRequestAPI.getAllRequests()
+      setChangeRequests(data)
+    } catch (error: any) {
+      console.error('Failed to fetch requests:', error)
+      setChangeRequestError('Failed to load change requests')
+    } finally {
+      setLoadingChangeRequests(false)
+    }
+  }
+
+  const handleApproveChangeRequest = (request: ChangeRequest) => {
+    setSelectedChangeRequest(request)
+    setResponseType('approve')
+    setAdminResponse('Your change request has been approved. You can now edit your appointment.')
+    setShowResponseModal(true)
+    setChangeRequestError('')
+  }
+
+  const handleRejectChangeRequest = (request: ChangeRequest) => {
+    setSelectedChangeRequest(request)
+    setResponseType('reject')
+    setAdminResponse('Your change request has been rejected.')
+    setShowResponseModal(true)
+    setChangeRequestError('')
+  }
+
+  const submitChangeRequestResponse = async () => {
+    if (!selectedChangeRequest) return
+    if (!adminResponse.trim()) {
+      setChangeRequestError('Please provide a response message')
+      return
+    }
+
+    try {
+      setChangeRequestError('')
+      if (responseType === 'approve') {
+        await changeRequestAPI.approveRequest(selectedChangeRequest.id, adminResponse)
+        setChangeRequestSuccess('Request approved successfully!')
+      } else {
+        await changeRequestAPI.rejectRequest(selectedChangeRequest.id, adminResponse)
+        setChangeRequestSuccess('Request rejected successfully!')
+      }
+      
+      setShowResponseModal(false)
+      setAdminResponse('')
+      setSelectedChangeRequest(null)
+      fetchChangeRequests()
+      
+      setTimeout(() => setChangeRequestSuccess(''), 3000)
+    } catch (error: any) {
+      setChangeRequestError(error.response?.data?.error || 'Failed to process request')
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  const getStatusBadge = (status: string) => {
+    const badges: any = {
+      PENDING: { class: 'bg-yellow-100 text-yellow-700', label: 'Pending' },
+      APPROVED: { class: 'bg-green-100 text-green-700', label: 'Approved' },
+      REJECTED: { class: 'bg-red-100 text-red-700', label: 'Rejected' }
+    }
+    const badge = badges[status] || badges.PENDING
+    return (
+      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${badge.class}`}>
+        {badge.label}
+      </span>
+    )
+  }
 
   const fetchAppointments = async () => {
     setLoadingAppointments(true);
@@ -374,25 +497,87 @@ const AppointmentsPage = () => {
         <div className='flex-1 p-8 bg-gray-50 relative overflow-y-auto'>
           <div className='flex justify-between items-center mb-6'>
             <h1 className='text-3xl font-bold text-blue-800'>Appointment Management</h1>
-          <div className='flex gap-4'>
-            <div className='bg-white px-4 py-2 rounded-lg shadow-md'>
-              <span className='text-sm text-gray-600'>Pending: </span>
-              <span className='font-bold text-orange-600'>{pendingAppointments.length}</span>
-            </div>
-            <div className='bg-white px-4 py-2 rounded-lg shadow-md'>
-              <span className='text-sm text-gray-600'>Approved: </span>
-              <span className='font-bold text-green-600'>{approvedAppointments.length}</span>
-            </div>
-            <div className='bg-white px-4 py-2 rounded-lg shadow-md'>
-              <span className='text-sm text-gray-600'>In Service: </span>
-              <span className='font-bold text-purple-600'>{inServiceAppointments.length}</span>
-            </div>
-            <div className='bg-white px-4 py-2 rounded-lg shadow-md'>
-              <span className='text-sm text-gray-600'>Completed: </span>
-              <span className='font-bold text-blue-600'>{completedAppointments.length}</span>
+          </div>
+
+          {/* Main Navigation Tabs */}
+          <div className='mb-6 bg-white rounded-lg shadow-sm'>
+            <div className='flex border-b border-gray-200'>
+              <button
+                onClick={() => setMainView('appointments')}
+                className={`flex items-center gap-2 px-6 py-4 font-semibold text-base transition-all relative ${
+                  mainView === 'appointments'
+                    ? 'text-blue-600 border-b-2 border-blue-600'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <svg 
+                  className="w-5 h-5" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" 
+                  />
+                </svg>
+                Manage FAQs
+              </button>
+              <button
+                onClick={() => setMainView('change-requests')}
+                className={`flex items-center gap-2 px-6 py-4 font-semibold text-base transition-all relative ${
+                  mainView === 'change-requests'
+                    ? 'text-blue-600 border-b-2 border-blue-600'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <svg 
+                  className="w-5 h-5" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" 
+                  />
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" 
+                  />
+                </svg>
+                Customer Questions
+              </button>
             </div>
           </div>
-        </div>
+
+          {/* Appointments View */}
+          {mainView === 'appointments' && (
+            <>
+              <div className='flex gap-4 mb-6'>
+                <div className='bg-white px-4 py-2 rounded-lg shadow-md'>
+                  <span className='text-sm text-gray-600'>Pending: </span>
+                  <span className='font-bold text-orange-600'>{pendingAppointments.length}</span>
+                </div>
+                <div className='bg-white px-4 py-2 rounded-lg shadow-md'>
+                  <span className='text-sm text-gray-600'>Approved: </span>
+                  <span className='font-bold text-green-600'>{approvedAppointments.length}</span>
+                </div>
+                <div className='bg-white px-4 py-2 rounded-lg shadow-md'>
+                  <span className='text-sm text-gray-600'>In Service: </span>
+                  <span className='font-bold text-purple-600'>{inServiceAppointments.length}</span>
+                </div>
+                <div className='bg-white px-4 py-2 rounded-lg shadow-md'>
+                  <span className='text-sm text-gray-600'>Completed: </span>
+                  <span className='font-bold text-blue-600'>{completedAppointments.length}</span>
+                </div>
+              </div>
 
         {/* Search Bar */}
         <div className='rounded-lg p-4 mb-4'>
@@ -971,6 +1156,213 @@ const AppointmentsPage = () => {
             </div>
           </>
         )}
+            </>
+          )}
+
+          {/* Change Requests View */}
+          {mainView === 'change-requests' && (
+            <div>
+              {/* Alerts */}
+              {changeRequestError && (
+                <div className='mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700'>
+                  {changeRequestError}
+                </div>
+              )}
+              {changeRequestSuccess && (
+                <div className='mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700'>
+                  {changeRequestSuccess}
+                </div>
+              )}
+
+              {/* Filter Tabs */}
+              <div className='mb-6 flex gap-4 border-b bg-white rounded-t-lg px-4'>
+                <button
+                  onClick={() => setChangeRequestFilter('pending')}
+                  className={`pb-3 px-4 font-semibold transition-colors border-b-2 ${
+                    changeRequestFilter === 'pending'
+                      ? 'text-blue-600 border-blue-600'
+                      : 'text-gray-500 hover:text-gray-700 border-transparent'
+                  }`}
+                >
+                  <MdPending className='inline mr-2' />
+                  Pending Requests ({changeRequests.filter(r => r.status === 'PENDING').length})
+                </button>
+                <button
+                  onClick={() => setChangeRequestFilter('all')}
+                  className={`pb-3 px-4 font-semibold transition-colors border-b-2 ${
+                    changeRequestFilter === 'all'
+                      ? 'text-blue-600 border-blue-600'
+                      : 'text-gray-500 hover:text-gray-700 border-transparent'
+                  }`}
+                >
+                  All Requests ({changeRequests.length})
+                </button>
+              </div>
+
+              {/* Requests List */}
+              {loadingChangeRequests ? (
+                <div className='flex justify-center items-center h-64'>
+                  <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600'></div>
+                </div>
+              ) : changeRequests.length === 0 ? (
+                <div className='bg-white rounded-lg shadow p-12 text-center'>
+                  <MdPending className='text-6xl text-gray-300 mx-auto mb-4' />
+                  <p className='text-xl text-gray-500'>No {changeRequestFilter === 'pending' ? 'pending' : ''} requests found</p>
+                </div>
+              ) : (
+                <div className='grid gap-6'>
+                  {changeRequests.map((request) => (
+                    <div
+                      key={request.id}
+                      className='bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow'
+                    >
+                      <div className='flex justify-between items-start mb-4'>
+                        <div className='flex-1'>
+                          <div className='flex items-center gap-3 mb-2'>
+                            <h3 className='text-xl font-semibold text-gray-800'>
+                              {request.vehicleBrand} {request.vehicleModel}
+                            </h3>
+                            {getStatusBadge(request.status)}
+                          </div>
+                          <div className='flex items-center gap-2 text-sm text-gray-600'>
+                            <FaUser className='text-gray-400' />
+                            <span>{request.customerName} ({request.customerEmail})</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className='grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 pb-4 border-b'>
+                        <div className='space-y-2'>
+                          <div className='flex items-center gap-2 text-sm text-gray-700'>
+                            <FaCar className='text-blue-500' />
+                            <span className='font-semibold'>Service:</span>
+                            <span>{request.serviceType}</span>
+                          </div>
+                          <div className='flex items-center gap-2 text-sm text-gray-700'>
+                            <FaCalendarAlt className='text-blue-500' />
+                            <span className='font-semibold'>Date:</span>
+                            <span>{request.appointmentDate}</span>
+                          </div>
+                          <div className='flex items-center gap-2 text-sm text-gray-700'>
+                            <FaClock className='text-blue-500' />
+                            <span className='font-semibold'>Time:</span>
+                            <span>{request.timeSlot}</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <p className='text-sm font-semibold text-gray-700 mb-2'>Customer&apos;s Reason:</p>
+                          <p className='text-sm text-gray-600 bg-gray-50 p-3 rounded'>
+                            {request.reason}
+                          </p>
+                        </div>
+                      </div>
+
+                      {request.adminResponse && (
+                        <div className='mb-4'>
+                          <p className='text-sm font-semibold text-gray-700 mb-2'>Admin Response:</p>
+                          <p className={`text-sm p-3 rounded ${
+                            request.status === 'APPROVED' 
+                              ? 'bg-green-50 text-green-700' 
+                              : 'bg-red-50 text-red-700'
+                          }`}>
+                            {request.adminResponse}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className='flex justify-between items-center text-xs text-gray-500 mb-4'>
+                        <span>Requested: {formatDate(request.requestedAt)}</span>
+                        {request.respondedAt && (
+                          <span>Responded: {formatDate(request.respondedAt)}</span>
+                        )}
+                      </div>
+
+                      {request.status === 'PENDING' && (
+                        <div className='flex gap-3'>
+                          <button
+                            onClick={() => handleApproveChangeRequest(request)}
+                            className='flex-1 bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center gap-2'
+                          >
+                            <FaCheck />
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleRejectChangeRequest(request)}
+                            className='flex-1 bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors flex items-center justify-center gap-2'
+                          >
+                            <FaTimes />
+                            Reject
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Response Modal */}
+              {showResponseModal && selectedChangeRequest && (
+                <div className='absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4'>
+                  <div className='bg-white rounded-lg p-8 max-w-md w-full shadow-2xl'>
+                    <h2 className='text-2xl font-bold text-gray-800 mb-4'>
+                      {responseType === 'approve' ? 'Approve' : 'Reject'} Request
+                    </h2>
+                    
+                    <div className='mb-4 p-4 bg-blue-50 rounded-lg'>
+                      <p className='text-sm font-semibold text-gray-700'>Request from:</p>
+                      <p className='text-sm text-gray-600 mt-1'>{selectedChangeRequest.customerName}</p>
+                      <p className='text-sm text-gray-600'>
+                        {selectedChangeRequest.vehicleBrand} {selectedChangeRequest.vehicleModel}
+                      </p>
+                    </div>
+
+                    <div className='mb-6'>
+                      <label className='block text-sm font-semibold text-gray-700 mb-2'>
+                        Response Message *
+                      </label>
+                      <textarea
+                        value={adminResponse}
+                        onChange={(e) => setAdminResponse(e.target.value)}
+                        className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none'
+                        rows={4}
+                        placeholder='Enter your response to the customer...'
+                      />
+                    </div>
+
+                    {changeRequestError && (
+                      <div className='mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-600 text-sm'>
+                        {changeRequestError}
+                      </div>
+                    )}
+
+                    <div className='flex gap-3'>
+                      <button
+                        onClick={() => {
+                          setShowResponseModal(false)
+                          setAdminResponse('')
+                          setChangeRequestError('')
+                        }}
+                        className='flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors'
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={submitChangeRequestResponse}
+                        className={`flex-1 text-white py-3 rounded-lg font-semibold transition-colors ${
+                          responseType === 'approve'
+                            ? 'bg-green-600 hover:bg-green-700'
+                            : 'bg-red-600 hover:bg-red-700'
+                        }`}
+                      >
+                        Confirm {responseType === 'approve' ? 'Approval' : 'Rejection'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

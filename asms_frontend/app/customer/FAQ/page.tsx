@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import Navbar from '../components/Navbar';
+import ChatBot from '../components/ChatBot';
 import {
   TextField,
   Button,
@@ -20,6 +21,9 @@ import {
   Chip,
   Modal,
   Backdrop,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -28,9 +32,36 @@ import {
   CheckCircle,
   Chat,
   Search,
+  ExpandMore,
 } from '@mui/icons-material';
 
+interface FAQ {
+  id: number;
+  category: string;
+  question: string;
+  answer: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface AnsweredQuestion {
+  id: number;
+  fullName: string;
+  email: string;
+  category: string;
+  question: string;
+  answer: string;
+  answeredAt: string;
+  createdAt: string;
+}
+
 export default function FAQPage() {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+  const [faqs, setFaqs] = useState<FAQ[]>([]);
+  const [answeredQuestions, setAnsweredQuestions] = useState<AnsweredQuestion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingAnsweredQuestions, setLoadingAnsweredQuestions] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [formData, setFormData] = useState({
@@ -39,12 +70,53 @@ export default function FAQPage() {
     category: '',
     question: '',
   });
-  const [attachment, setAttachment] = useState<{name: string; preview: string} | null>(null);
+  const [attachment, setAttachment] = useState<{name: string; preview: string; file: File} | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const categories = ['All', 'Appointments', 'Payments', 'Services', 'Other'];
+
+  // Fetch FAQs and answered questions on mount and poll every 30 seconds
+  useEffect(() => {
+    fetchFAQs();
+    fetchAnsweredQuestions();
+    const interval = setInterval(() => {
+      fetchFAQs();
+      fetchAnsweredQuestions();
+    }, 30000); // Poll every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchFAQs = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/customer/faqs`);
+      if (response.ok) {
+        const data = await response.json();
+        setFaqs(data);
+      }
+    } catch (error) {
+      console.error('Error fetching FAQs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAnsweredQuestions = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/customer/my-questions/answered`);
+      if (response.ok) {
+        const data = await response.json();
+        setAnsweredQuestions(data);
+      }
+    } catch (error) {
+      console.error('Error fetching answered questions:', error);
+    } finally {
+      setLoadingAnsweredQuestions(false);
+    }
+  };
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -61,7 +133,7 @@ export default function FAQPage() {
     );
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const newErrors: Record<string, string> = {};
     
     if (!formData.fullName.trim()) {
@@ -86,20 +158,113 @@ export default function FAQPage() {
       setErrors(newErrors);
       return;
     }
-    
-    setShowSuccess(true);
-    setTimeout(() => {
-      setShowSuccess(false);
-      setIsModalOpen(false);
-      setFormData({
-        fullName: '',
-        email: '',
-        category: '',
-        question: '',
+
+    setUploading(true);
+    let attachmentUrl = null;
+
+    try {
+      // Upload image to Cloudinary if attachment exists
+      if (attachment?.file) {
+        const formDataUpload = new FormData();
+        formDataUpload.append('file', attachment.file);
+        formDataUpload.append('upload_preset', 'ml_default'); // You'll need to create this preset in Cloudinary
+        
+        try {
+          const cloudinaryResponse = await fetch(
+            'https://api.cloudinary.com/v1_1/dvkqmlqow/image/upload', // Replace with your cloud name
+            {
+              method: 'POST',
+              body: formDataUpload,
+            }
+          );
+
+          if (cloudinaryResponse.ok) {
+            const cloudinaryData = await cloudinaryResponse.json();
+            attachmentUrl = cloudinaryData.secure_url;
+          } else {
+            console.error('Failed to upload image to Cloudinary');
+            // Continue anyway - attachment is optional
+          }
+        } catch (uploadError) {
+          console.error('Error uploading to Cloudinary:', uploadError);
+          // Continue anyway - attachment is optional
+        }
+      }
+
+      // Submit question with Cloudinary URL (or null if no attachment)
+      const requestBody = {
+        fullName: formData.fullName,
+        email: formData.email,
+        category: formData.category,
+        question: formData.question,
+        attachmentUrl: attachmentUrl,
+      };
+      
+      console.log('Submitting question:', requestBody);
+
+      const response = await fetch(`${API_URL}/api/customer/questions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
       });
-      setAttachment(null);
-      setErrors({});
-    }, 3000);
+
+      console.log('Response status:', response.status);
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Question submitted successfully:', result);
+        setShowSuccess(true);
+        setTimeout(() => {
+          setShowSuccess(false);
+          setIsModalOpen(false);
+          setFormData({
+            fullName: '',
+            email: '',
+            category: '',
+            question: '',
+          });
+          setAttachment(null);
+          setErrors({});
+        }, 3000);
+      } else {
+        let errorMessage = `Failed to submit question: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          console.error('Error response:', errorData);
+          
+          // Handle validation errors (field-specific errors)
+          if (typeof errorData === 'object' && !errorData.error && !errorData.message) {
+            errorMessage = 'Validation errors:\n' + 
+              Object.entries(errorData).map(([field, msg]) => `- ${field}: ${msg}`).join('\n');
+          } 
+          // Handle general error messages
+          else if (errorData.message) {
+            errorMessage = errorData.message;
+          } else if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch (e) {
+          // If response is not JSON, try to get text
+          try {
+            const errorText = await response.text();
+            if (errorText) {
+              errorMessage = errorText;
+            }
+          } catch (textError) {
+            console.error('Could not parse error response');
+          }
+        }
+        
+        alert(errorMessage);
+      }
+    } catch (error) {
+      console.error('Error submitting question:', error);
+      alert('An error occurred while submitting your question. Please try again.');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleCloseModal = () => {
@@ -111,19 +276,34 @@ export default function FAQPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Check file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        setErrors({...errors, attachment: 'File size must be less than 5MB'});
+        return;
+      }
+      
       setAttachment({
         name: file.name,
-        preview: URL.createObjectURL(file)
+        preview: URL.createObjectURL(file),
+        file: file
       });
+      setErrors({...errors, attachment: ''});
     }
   };
+
+  const filteredFAQs = faqs.filter(faq => {
+    const matchesSearch = faq.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         faq.answer.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === 'All' || faq.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <div className='flex'>
       <Sidebar activeItem='FAQ' />
       <div className='flex-1 ml-[16.666667%] bg-gray-50'>
         <Navbar />
-        <Container maxWidth="lg" className="py-6">
+        <Container maxWidth="lg" className="py-6 pt-24">
           <Box className="mb-8">
             <Box className="flex justify-between items-start mb-6">
               <Box>
@@ -185,16 +365,110 @@ export default function FAQPage() {
             </Box>
           </Box>
 
-          <Paper className="text-center py-20" elevation={1}>
-            <Chat sx={{ fontSize: 64, color: '#d1d5db', mx: 'auto', mb: 2 }} />
-            <Typography variant="h5" className="font-semibold text-gray-600 mb-2">
-              No FAQs available yet
-            </Typography>
-            <br></br>
-            <Typography className="text-gray-500">
-              FAQs will appear here once added by the admin
-            </Typography>
-          </Paper>
+          {loading ? (
+            <Paper className="text-center py-20" elevation={1}>
+              <Typography className="text-gray-500">Loading FAQs...</Typography>
+            </Paper>
+          ) : filteredFAQs.length === 0 ? (
+            <Paper className="text-center py-20" elevation={1}>
+              <Chat sx={{ fontSize: 64, color: '#d1d5db', mx: 'auto', mb: 2 }} />
+              <Typography variant="h5" className="font-semibold text-gray-600 mb-2">
+                No FAQs available yet
+              </Typography>
+              <br></br>
+              <Typography className="text-gray-500">
+                {searchQuery || selectedCategory !== 'All' 
+                  ? 'No FAQs match your search criteria'
+                  : 'FAQs will appear here once added by the admin'}
+              </Typography>
+            </Paper>
+          ) : (
+            <Box className="space-y-3">
+              {filteredFAQs.map((faq) => (
+                <Accordion 
+                  key={faq.id}
+                  expanded={expandedFAQ === faq.id}
+                  onChange={() => setExpandedFAQ(expandedFAQ === faq.id ? null : faq.id)}
+                  elevation={1}
+                >
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Box>
+                      <Typography className="font-medium text-gray-800 mb-2">
+                        {faq.question}
+                      </Typography>
+                      <Chip 
+                        label={faq.category} 
+                        size="small" 
+                        color="primary" 
+                        variant="outlined"
+                      />
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Typography className="text-gray-700">
+                      {faq.answer}
+                    </Typography>
+                  </AccordionDetails>
+                </Accordion>
+              ))}
+            </Box>
+          )}
+
+          {/* Community Q&A Section */}
+          {answeredQuestions.length > 0 && (
+            <Box className="mt-12">
+              <Typography variant="h5" className="font-bold text-gray-800 mb-4">
+                💬 Community Q&A
+              </Typography>
+              <Typography className="text-gray-600 mb-4">
+                Questions from our customers answered by our team
+              </Typography>
+              
+              <Box className="space-y-3">
+                {answeredQuestions.map((question) => (
+                  <Accordion key={question.id} elevation={1}>
+                    <AccordionSummary expandIcon={<ExpandMore />}>
+                      <Box>
+                        <Typography className="font-medium text-gray-800 mb-2">
+                          {question.question}
+                        </Typography>
+                        <Box className="flex gap-2 items-center">
+                          <Chip 
+                            label={question.category} 
+                            size="small" 
+                            color="primary" 
+                            variant="outlined"
+                          />
+                          <Typography className="text-xs text-gray-500">
+                            Asked by {question.fullName}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <Box className="space-y-3">
+                        <Box className="p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+                          <Typography className="text-sm font-medium text-blue-900 mb-2">
+                            ✓ Answer from Admin Team
+                          </Typography>
+                          <Typography className="text-gray-700">
+                            {question.answer}
+                          </Typography>
+                          <Typography className="text-xs text-gray-500 mt-2">
+                            Answered on {new Date(question.answeredAt).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </AccordionDetails>
+                  </Accordion>
+                ))}
+              </Box>
+            </Box>
+          )}
 
           <Paper className="mt-12 p-8 text-center bg-gradient-to-r from-blue-50 to-indigo-50" elevation={1}>
             <Typography variant="h5" className="font-semibold mb-2">
@@ -404,7 +678,7 @@ export default function FAQPage() {
               <Button
                 variant="contained"
                 fullWidth
-                disabled={!isFormValid()}
+                disabled={!isFormValid() || uploading}
                 onClick={handleSubmit}
                 sx={{ 
                   textTransform: 'none',
@@ -417,11 +691,12 @@ export default function FAQPage() {
                   },
                 }}
               >
-                Submit Question
+                {uploading ? 'Uploading...' : 'Submit Question'}
               </Button>
               <Button
                 variant="outlined"
                 onClick={handleCloseModal}
+                disabled={uploading}
                 sx={{ 
                   textTransform: 'none',
                   py: 1.5,
@@ -487,6 +762,9 @@ export default function FAQPage() {
           </Typography> */}
         </Box>
       </Modal>
+      
+      {/* ChatBot Component */}
+      <ChatBot />
     </div>
   );
 }
